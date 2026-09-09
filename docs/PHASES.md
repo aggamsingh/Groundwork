@@ -31,8 +31,8 @@ frozen; `docker compose up` works.
 | # | Task | Status | Blocked by |
 |---|---|---|---|
 | 0.1 | `CLAUDE.md` + four docs logs | COMPLETE | — |
-| 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton | COMPLETE | — |
-| 0.3 | `docker-compose.yml`: Postgres 16 + pgvector — **written, not yet smoke-tested (Docker not installed)** | IN PROGRESS | Q-B8 |
+| 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton — **verified: uv.lock resolves on Python 3.11.9, 23 tests pass, ruff clean** | COMPLETE | — |
+| 0.3 | `docker-compose.yml` + `scripts/check_env.py` preflight — Docker/uv/py3.11 installed; **blocked on WSL install + reboot (P-001)** | IN PROGRESS | P-001 |
 | 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
 | 0.5 | Seed corpus: 42 unique papers copied, `corpus/manifest.csv` committed (50 files → 42, see D-006/D-007) | COMPLETE | — |
 | 0.6a | Holdout split — **FROZEN 2026-09-09**, 14 holdout / 28 dev, chosen by the user | COMPLETE | — |
@@ -52,7 +52,7 @@ frozen; `docker compose up` works.
 | ~~Q-B5~~ | ~~Holdout split — random or stratified?~~ **Resolved: the user chooses the papers. Claude does not generate the split.** | — |
 | Q-B6 | Schema — does the user want a Claude draft to edit, or write from scratch? (Either way the frozen file is theirs.) | 0.7 |
 | Q-B7 | Rename spec to `PROJECT_SPEC.md`, or keep current name? | cosmetic |
-| Q-B8 | **Docker and uv are not installed; only Python 3.14 is present (spec wants 3.11).** Install them? | 0.3, and Phase 0 exit |
+| ~~Q-B8~~ | ~~Docker/uv/Python 3.11 not installed~~ **Resolved 2026-09-09: all three installed. Docker engine still blocked on WSL (P-001).** | — |
 
 ---
 
