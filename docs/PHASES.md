@@ -37,7 +37,7 @@ frozen; `docker compose up` works.
 | 0.5 | Seed corpus: 42 unique papers copied, `corpus/manifest.csv` committed (50 files → 42, see D-006/D-007) | COMPLETE | — |
 | 0.6a | Holdout split — **FROZEN 2026-09-09**, 14 holdout / 28 dev, chosen by the user | COMPLETE | — |
 | 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests, loading the frozen split | COMPLETE | — |
-| 0.7 | **User** writes and freezes `schema/semcom.yaml` (dated); Claude may draft for editing | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
+| 0.7 | `schema/semcom.yaml` — **draft written 2026-09-09**, awaiting user edit + freeze | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
 | 0.8 | **User** exports `eval/gold_table_semcom.csv` from their survey — never synthesized | **BLOCKED ON HUMAN** | **CHECKPOINT 3** |
 | 0.9 | DECISIONS D-001, D-002, D-003, D-004 all written 2026-09-09 | COMPLETE | — |
 | 0.10 | Exit check + `docs/reports/phase-0.md` | NOT STARTED | 0.3, 0.6a, 0.7, 0.8 |

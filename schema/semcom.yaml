@@ -1,0 +1,213 @@
+# Extraction schema — semantic communication corpus
+#
+# CHECKPOINT 2. This file is a DRAFT proposed by Claude for the user to edit.
+# The frozen version is the user's. Nothing loads this while status is `draft`:
+# survey.extraction.schema.load_schema() refuses it.
+#
+# To freeze:  set status: frozen, set frozen_date, delete the TODO(user) notes
+#             once you have resolved them, then say the schema is frozen.
+#
+# Lines marked TODO(user) are the ones where a domain judgement is needed and
+# my guess is worth little. Everything else is structure you can keep or discard.
+
+corpus: semcom
+status: draft            # draft | frozen  -- must be `frozen` to be usable
+frozen_date: null        # YYYY-MM-DD, set when you freeze
+schema_version: 1
+
+# ---------------------------------------------------------------------------
+# How absence is represented.
+#
+# "not reported" is a first-class value (spec §1): a paper that ran no SNR sweep
+# is a different fact from a paper whose SNR sweep we failed to extract. Both are
+# different again from a field that cannot apply to that paper at all. Keeping
+# these apart is what lets a comparison table show an honest blank instead of a
+# confident wrong number.
+# ---------------------------------------------------------------------------
+absence_values:
+  not_reported:    The paper does not state this. A fact about the paper.
+  not_applicable:  The field cannot apply to this paper (e.g. SNR for a
+                   non-wireless text-similarity paper). A fact about the field.
+  not_extracted:   Extraction failed or was low-confidence. A fact about us,
+                   never shown as an answer -- it triggers abstention.
+
+# Every extracted value carries these alongside it, so a table cell can be traced
+# back to the exact span that produced it and abstain when support is weak.
+value_envelope:
+  value:      the extracted value, or one of absence_values
+  span:       [paragraph_id, char_start, char_end]   # see D-003
+  confidence: float 0-1
+  verbatim:   the exact source text the value was read from
+
+# ---------------------------------------------------------------------------
+# Fields. The eight named in spec §5 Phase 0, plus `year` and `venue` which the
+# parser gets for free and which the comparison tables need for sorting.
+# ---------------------------------------------------------------------------
+fields:
+
+  - name: task
+    type: enum
+    cardinality: many          # a paper may address more than one
+    description: >
+      The communication or ML task the paper addresses.
+    # TODO(user): this list is my guess at the task taxonomy in your corpus.
+    # It is the single most important thing to get right -- it drives routing,
+    # comparison grouping, and contradiction detection. Add, merge, rename.
+    values:
+      - text_transmission
+      - image_transmission
+      - speech_transmission
+      - multimodal_transmission
+      - task_oriented_semantic_communication
+      - knowledge_extraction
+      - semantic_similarity_metric
+      - resource_allocation
+      - survey                 # the paper is a survey, not a primary contribution
+      - background             # foundational ML, not SemCom (e.g. word2vec)
+
+  - name: architecture
+    type: string
+    cardinality: many
+    description: >
+      The model or system architecture proposed or evaluated. Free text, because
+      naming in this literature is not standardised.
+    extraction_hints:
+      - Prefer the paper's own name for its system (DeepSC, R-DeepSC, BVCS).
+      - Record the backbone separately when stated (Transformer, BERT, LSTM).
+    examples: [DeepSC, R-DeepSC, BERT-based encoder, Transformer autoencoder]
+
+  - name: dataset
+    type: string
+    cardinality: many
+    description: Datasets used for training or evaluation.
+    extraction_hints:
+      - Record the dataset as named, not normalised.
+      - Split sizes go in reported_values, not here.
+    examples: [European Parliament, Flickr30k, CIFAR-10, WikiText-103]
+
+  - name: channel_model
+    type: enum
+    cardinality: many
+    description: >
+      The physical channel assumed in the experiments. Central to whether two
+      papers' numbers are comparable at all.
+    # TODO(user): confirm this covers your corpus. Missing anything?
+    values:
+      - awgn
+      - rayleigh_fading
+      - rician_fading
+      - erasure
+      - multipath
+      - none                   # no physical channel modelled
+    notes: >
+      A paper with `none` is not comparable on BLEU-vs-SNR with a paper that
+      models AWGN. The contradiction detector must not flag them as disagreeing.
+
+  - name: snr_range
+    type: numeric_range
+    cardinality: one
+    unit: dB
+    description: The SNR range swept in the experiments.
+    representation:
+      min: float
+      max: float
+      step: float or null
+    extraction_hints:
+      - Usually stated in an experiments section or read off a figure axis.
+      - Figures are out of scope (non-goal), so an SNR range that appears ONLY
+        in a plot and never in text or a table is `not_reported`, not a guess.
+    examples:
+      - {min: -6, max: 18, step: 3}
+      - {min: 0, max: 20, step: null}
+
+  - name: metrics
+    type: enum
+    cardinality: many
+    description: Which evaluation metrics the paper reports.
+    # TODO(user): BLEU and sentence-similarity dominate text SemCom, but you
+    # know what else shows up. Add what is missing.
+    values:
+      - bleu
+      - sentence_similarity
+      - bert_score
+      - cosine_similarity
+      - psnr
+      - ssim
+      - word_error_rate
+      - accuracy
+      - mutual_information
+      - latency
+      - bandwidth_compression_ratio
+
+  - name: reported_values
+    type: record
+    cardinality: many
+    description: >
+      Individual numeric results. One record per (metric, condition) pair --
+      NOT one per metric, because the same metric is reported at many SNRs.
+    record_fields:
+      metric:        one of the `metrics` values
+      value:         float
+      snr_db:        float or not_applicable
+      channel_model: one of the `channel_model` values
+      dataset:       string
+      system:        which system the number belongs to (the paper's own, or a baseline)
+      is_baseline:   bool
+    notes: >
+      `system` and `is_baseline` matter more than they look. Papers report their
+      own numbers next to reimplemented baselines, and attributing a baseline's
+      score to the paper proposing it is the most likely numeric error mode.
+    # TODO(user): is (metric, snr, channel, dataset, system) enough to make a
+    # number uniquely addressable in your literature, or is there another
+    # condition axis that varies -- code rate, channel uses, compression ratio?
+
+  - name: limitations
+    type: string
+    cardinality: many
+    description: >
+      Limitations the paper states about itself. Stated only -- not inferred,
+      and not your assessment of the paper.
+    extraction_hints:
+      - Usually in a conclusion or a dedicated limitations paragraph.
+      - If the paper claims none, that is `not_reported`, not an empty list.
+
+  - name: year
+    type: int
+    cardinality: one
+    description: Publication year.
+    notes: >
+      From the parsed document, NOT from PDF creation dates -- those proved to be
+      download dates for several papers in this corpus.
+
+  - name: venue
+    type: string
+    cardinality: one
+    description: Publication venue.
+    examples: [IEEE COMST, IEEE TWC, ICASSP, arXiv preprint]
+
+# ---------------------------------------------------------------------------
+# Which fields the comparison table shows by default (spec §1: comparison tables
+# across a chosen subset of papers and fields).
+# ---------------------------------------------------------------------------
+comparison_table_default_columns:
+  - task
+  - architecture
+  - dataset
+  - channel_model
+  - snr_range
+  - metrics
+
+# ---------------------------------------------------------------------------
+# Fields on which two papers can be said to CONTRADICT each other.
+#
+# Only numeric results support contradiction, and only when the setup matches:
+# same metric, same dataset, same channel model, same SNR. Two different BLEU
+# scores at different SNRs are not a disagreement, they are two facts.
+# ---------------------------------------------------------------------------
+contradiction:
+  comparable_on: reported_values
+  setup_must_match: [metric, dataset, channel_model, snr_db]
+  # TODO(user): what relative gap counts as a real disagreement rather than
+  # ordinary experimental variation? I have put 10% as a placeholder; you know
+  # what is noise in this literature and what is a genuine conflict.
+  disagreement_threshold_relative: 0.10

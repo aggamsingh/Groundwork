@@ -222,3 +222,32 @@ Communications for Future Internet: Fundamentals, Applications, and Challenges,
 Wanting Yang, Hongyang Du, ..." matches the published version's header verbatim.
 Reversible? Yes — the source folder is untouched and `corpus/provenance.json`
 records the preprint filename against the kept paper.
+
+## D-008 — Schema draft ships as `status: draft` and is refused by the loader
+Date: 2026-09-09
+Phase: 0
+Decision: The proposed extraction schema lives at its real path,
+`schema/semcom.yaml`, carrying `status: draft` and `frozen_date: null`.
+`survey.extraction.schema.load_schema` raises `SchemaNotFrozenError` on anything
+not marked `frozen` with a valid ISO date. The user freezes it by editing those
+two keys.
+Alternatives considered: (i) write the draft to `schema/semcom.draft.yaml` and
+have the user rename it; (ii) hand the draft over in conversation and write no
+file; (iii) write it to the real path with no status flag and rely on the user
+remembering it is provisional.
+Reasoning: (iii) is the failure this project keeps designing against — a
+plausible file at the expected path that nothing distinguishes from the real
+thing. Extraction against provisional field definitions is worse than no
+extraction: it fills the claim store with values whose meaning silently changes
+when a field is later renamed or re-typed, and every number already recorded
+against them becomes wrong without any error surfacing. (i) is safe but leaves
+the frozen path empty and makes the freeze a filesystem operation rather than a
+statement of intent. (ii) loses the structure entirely. Putting the draft at the
+real path with a mechanical gate mirrors the holdout worksheet, which worked:
+the file is editable in place, and the thing that unblocks it is a deliberate
+edit the user makes.
+Same pattern, three checkpoints now: worksheet at the real path, guard that
+fails closed, freeze by explicit edit.
+Evidence: 23 unit tests pass, including one asserting the shipped draft still
+refuses to load.
+Reversible? Yes — the schema is the user's to rewrite entirely.
