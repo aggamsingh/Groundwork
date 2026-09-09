@@ -34,9 +34,9 @@ frozen; `docker compose up` works.
 | 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton | COMPLETE | — |
 | 0.3 | `docker-compose.yml`: Postgres 16 + pgvector — **written, not yet smoke-tested (Docker not installed)** | IN PROGRESS | Q-B8 |
 | 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
-| 0.5 | Freeze SemCom corpus (~120 papers); commit `corpus/manifest.csv` with sha256 | BLOCKED | Q-B1 |
+| 0.5 | Freeze SemCom corpus (~120 papers) — `scripts/build_manifest.py` written and tested; **awaiting PDFs** | BLOCKED | Q-B1 |
 | 0.6a | **User** splits 2/3 dev / 1/3 holdout → `eval/holdout_papers.txt`, confirms frozen | **BLOCKED ON HUMAN** | **CHECKPOINT 1** |
-| 0.6b | CI leak guard: fail any run touching holdout ids before Phase 6 | NOT STARTED | 0.6a |
+| 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests | COMPLETE (awaits real split to load) | — |
 | 0.7 | **User** writes and freezes `schema/semcom.yaml` (dated); Claude may draft for editing | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
 | 0.8 | **User** exports `eval/gold_table_semcom.csv` from their survey — never synthesized | **BLOCKED ON HUMAN** | **CHECKPOINT 3** |
 | 0.9 | DECISIONS D-001, D-002, D-003, D-004 all written 2026-09-09 | COMPLETE | — |
