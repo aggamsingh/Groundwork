@@ -251,3 +251,37 @@ fails closed, freeze by explicit edit.
 Evidence: 23 unit tests pass, including one asserting the shipped draft still
 refuses to load.
 Reversible? Yes — the schema is the user's to rewrite entirely.
+
+## D-009 — `task` split into `modality` + `contribution_type`; semantic noise split from `channel_model`
+Date: 2026-09-09
+Phase: 0
+Decision: Two changes to the draft schema, both made after reading the 28
+development papers (user delegated the taxonomy on 2026-09-09, "you decide from
+the corpus"). (1) The single `task` enum becomes two fields, `modality` (text /
+image / video / speech / multimodal / modality_agnostic) and `contribution_type`
+(jscc_system / semantic_noise_robustness / knowledge_base_driven /
+generative_ai_semcom / semantic_similarity_metric / knowledge_extraction /
+resource_allocation / architecture_component / survey / background).
+(2) `semantic_noise_model` becomes its own field rather than values inside
+`channel_model`, and joins the contradiction match key.
+Alternatives considered: (i) keep one flat `task` enum and allow multiple values,
+as drafted; (ii) a free-text task field with clustering deferred to Phase 5.
+Reasoning: the corpus falsifies (i). `robust-semcom-against-noise` is a text
+paper *and* a robustness paper; `end-to-end-generative-semantic-communication-
+powered-by-shared-semantic-knowledge-base` is text *and* knowledge-base-driven.
+A flat enum with cardinality `many` can technically hold both, but it cannot say
+which axis each value belongs to, so "papers doing the same thing" is not
+expressible — and that grouping is what comparison tables and contradiction
+detection are built on. Two orthogonal enums make the join condition explicit.
+The second change has the same shape. Several dev papers model adversarial or
+semantic noise *on top of* a physical channel (FGSM-generated semantic noise over
+AWGN; knowledge-base mismatch). Folding those into `channel_model` would make two
+AWGN papers look like they used different channels, suppressing real comparisons,
+while leaving genuinely incomparable setups indistinguishable. Splitting the axis
+and adding it to `setup_must_match` fixes both directions.
+(ii) is the Phase 5 approach and is where induced schemas will land; doing it now
+would leave Phase 2 with no stable grouping to evaluate against.
+Evidence: first-page text of 22 of the 28 dev papers (6 use embedded font
+encodings the throwaway extractor cannot decode — a Phase 1 parser requirement,
+not a schema issue). Holdout papers were excluded via assert_no_holdout.
+Reversible? Yes — the schema is still `draft` and the user's to rewrite.

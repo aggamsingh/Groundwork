@@ -45,25 +45,48 @@ value_envelope:
 # ---------------------------------------------------------------------------
 fields:
 
-  - name: task
+  # NOTE: the original draft had a single `task` field. Reading the 28
+  # development papers showed it was conflating two independent axes -- a paper
+  # can be a *text* paper AND a *robustness* paper (robust-semcom-against-noise),
+  # or text AND knowledge-base-driven (end-to-end-generative-...-knowledge-base).
+  # One enum forces a false choice and loses half the fact. Split in two. See D-009.
+
+  - name: modality
     type: enum
-    cardinality: many          # a paper may address more than one
+    cardinality: many
     description: >
-      The communication or ML task the paper addresses.
-    # TODO(user): this list is my guess at the task taxonomy in your corpus.
-    # It is the single most important thing to get right -- it drives routing,
-    # comparison grouping, and contradiction detection. Add, merge, rename.
+      What the system transmits or operates on.
     values:
-      - text_transmission
-      - image_transmission
-      - speech_transmission
-      - multimodal_transmission
-      - task_oriented_semantic_communication
+      - text
+      - image
+      - video
+      - speech
+      - multimodal
+      - modality_agnostic      # theory, metrics, resource allocation
+    # Grounded in the dev set: text dominates, with image/multimodal appearing
+    # mainly inside surveys covering several modalities at once.
+
+  - name: contribution_type
+    type: enum
+    cardinality: many
+    description: >
+      What kind of contribution the paper makes. Drives comparison grouping:
+      two papers are meaningfully comparable when they share a contribution type,
+      not merely a modality.
+    values:
+      - jscc_system              # end-to-end joint source-channel coding system
+      - semantic_noise_robustness  # adversarial / semantic noise defence
+      - knowledge_base_driven    # shared KB or knowledge graph at both ends
+      - generative_ai_semcom     # LLM- or diffusion-based SemCom
+      - semantic_similarity_metric  # proposes/evaluates a similarity measure
       - knowledge_extraction
-      - semantic_similarity_metric
-      - resource_allocation
-      - survey                 # the paper is a survey, not a primary contribution
-      - background             # foundational ML, not SemCom (e.g. word2vec)
+      - resource_allocation      # power, spectrum, bandwidth optimisation
+      - architecture_component   # a encoder/decoder block, not a full system
+      - survey                   # survey / tutorial / review
+      - background               # foundational ML, not SemCom (e.g. word2vec)
+    # Each of these was observed in the development set. `jscc_system`,
+    # `semantic_noise_robustness` and `knowledge_base_driven` are the three
+    # clusters that a single `task` enum was collapsing together.
 
   - name: architecture
     type: string
@@ -91,7 +114,11 @@ fields:
     description: >
       The physical channel assumed in the experiments. Central to whether two
       papers' numbers are comparable at all.
-    # TODO(user): confirm this covers your corpus. Missing anything?
+    # Grounded in the dev set: AWGN and Rayleigh dominate; semantic noise is a
+    # SEPARATE axis (see semantic_noise_model below) because several papers model
+    # adversarial/semantic noise on top of a physical channel, and conflating the
+    # two would make their numbers look incomparable when they are not.
+    # TODO(user): confirm. Anything missing?
     values:
       - awgn
       - rayleigh_fading
@@ -102,6 +129,21 @@ fields:
     notes: >
       A paper with `none` is not comparable on BLEU-vs-SNR with a paper that
       models AWGN. The contradiction detector must not flag them as disagreeing.
+
+  - name: semantic_noise_model
+    type: enum
+    cardinality: many
+    description: >
+      Semantic (not physical) noise the paper models. Distinct from
+      channel_model -- robust-semcom-against-noise and
+      robust-semantic-communication-driven-by-knowledge-graph both model
+      semantic noise ON TOP OF a physical channel.
+    values:
+      - none
+      - adversarial_fgsm
+      - adversarial_other
+      - knowledge_base_mismatch
+      - literal_text_noise
 
   - name: snr_range
     type: numeric_range
@@ -124,19 +166,22 @@ fields:
     type: enum
     cardinality: many
     description: Which evaluation metrics the paper reports.
-    # TODO(user): BLEU and sentence-similarity dominate text SemCom, but you
-    # know what else shows up. Add what is missing.
+    # TODO(user): confirm. BLEU and sentence-similarity dominate the text papers
+    # in the dev set; the image metrics are here for the multimodal surveys.
     values:
       - bleu
       - sentence_similarity
       - bert_score
       - cosine_similarity
+      - msssim
       - psnr
       - ssim
       - word_error_rate
       - accuracy
       - mutual_information
       - latency
+      - energy_efficiency
+      - spectral_efficiency
       - bandwidth_compression_ratio
 
   - name: reported_values
@@ -150,6 +195,7 @@ fields:
       value:         float
       snr_db:        float or not_applicable
       channel_model: one of the `channel_model` values
+      semantic_noise_model: one of the `semantic_noise_model` values
       dataset:       string
       system:        which system the number belongs to (the paper's own, or a baseline)
       is_baseline:   bool
@@ -157,9 +203,9 @@ fields:
       `system` and `is_baseline` matter more than they look. Papers report their
       own numbers next to reimplemented baselines, and attributing a baseline's
       score to the paper proposing it is the most likely numeric error mode.
-    # TODO(user): is (metric, snr, channel, dataset, system) enough to make a
-    # number uniquely addressable in your literature, or is there another
-    # condition axis that varies -- code rate, channel uses, compression ratio?
+    # TODO(user): is (metric, snr, channel, semantic_noise, dataset, system)
+    # enough to address a number uniquely, or does another axis vary in this
+    # literature -- code rate, channel uses per symbol, compression ratio?
 
   - name: limitations
     type: string
@@ -190,7 +236,8 @@ fields:
 # across a chosen subset of papers and fields).
 # ---------------------------------------------------------------------------
 comparison_table_default_columns:
-  - task
+  - modality
+  - contribution_type
   - architecture
   - dataset
   - channel_model
@@ -206,7 +253,7 @@ comparison_table_default_columns:
 # ---------------------------------------------------------------------------
 contradiction:
   comparable_on: reported_values
-  setup_must_match: [metric, dataset, channel_model, snr_db]
+  setup_must_match: [metric, dataset, channel_model, semantic_noise_model, snr_db]
   # TODO(user): what relative gap counts as a real disagreement rather than
   # ordinary experimental variation? I have put 10% as a placeholder; you know
   # what is noise in this literature and what is a genuine conflict.
