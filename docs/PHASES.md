@@ -35,8 +35,8 @@ frozen; `docker compose up` works.
 | 0.3 | `docker-compose.yml`: Postgres 16 + pgvector — **written, not yet smoke-tested (Docker not installed)** | IN PROGRESS | Q-B8 |
 | 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
 | 0.5 | Seed corpus: 42 unique papers copied, `corpus/manifest.csv` committed (50 files → 42, see D-006/D-007) | COMPLETE | — |
-| 0.6a | **User** splits 2/3 dev / 1/3 holdout → `eval/holdout_papers.txt`, confirms frozen | **BLOCKED ON HUMAN** | **CHECKPOINT 1** |
-| 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests | COMPLETE (awaits real split to load) | — |
+| 0.6a | Holdout split — **FROZEN 2026-09-09**, 14 holdout / 28 dev, chosen by the user | COMPLETE | — |
+| 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests, loading the frozen split | COMPLETE | — |
 | 0.7 | **User** writes and freezes `schema/semcom.yaml` (dated); Claude may draft for editing | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
 | 0.8 | **User** exports `eval/gold_table_semcom.csv` from their survey — never synthesized | **BLOCKED ON HUMAN** | **CHECKPOINT 3** |
 | 0.9 | DECISIONS D-001, D-002, D-003, D-004 all written 2026-09-09 | COMPLETE | — |
@@ -58,9 +58,9 @@ frozen; `docker compose up` works.
 
 ## Phase 1 — Ingestion and corpus store
 
-**Status:** NOT STARTED — **do not begin until the user says so, and not before
-CHECKPOINT 1 clears:** `eval/holdout_papers.txt` must exist and the user must have
-confirmed the split is frozen. This is a hard refusal, not a reminder.
+**Status:** NOT STARTED — **CHECKPOINT 1 cleared 2026-09-09** (holdout frozen).
+Still gated on Phase 0 exit: tasks 0.3 (Docker), 0.7 (schema) and 0.8 (gold table)
+are outstanding, and no phase proceeds without its predecessor's exit criteria.
 
 **Exit criteria:** all 42 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.

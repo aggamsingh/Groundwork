@@ -1,33 +1,31 @@
-# eval/holdout_papers.txt  --  CHECKPOINT 1
+# eval/holdout_papers.txt  --  CHECKPOINT 1  --  FROZEN 2026-09-09
 #
-# HOW TO USE THIS FILE
-#   Remove the '# ' from the start of a line to HOLD OUT that paper.
-#   Leave a line commented to keep the paper in the development set.
-#   Target: 14 of 42 papers, using the per-group quotas below.
+# 14 holdout / 28 development, of 42 papers.
+# Chosen by the user. NOT generated.
 #
-# Nothing is selected yet. As written this file REFUSES to load
-# (the guard rejects an empty holdout). That is deliberate.
+# These papers are not read, ingested into the dev index, or tuned against
+# until Phase 6. Enforced by v_dev_papers (schema) and by
+# survey.evalharness.holdout.assert_no_holdout (CI).
 #
-# When done: save, then tell me 'the split is frozen'.
-# After that, do not open these PDFs again until Phase 6.
-
+# Changing this file requires an entry in docs/CHANGELOG.md.
+#
 # ========================================================================
 # LONG  (20+ pages, mostly surveys)  --  15 papers, HOLD OUT 5
 # ========================================================================
 # a-contemporary-survey-on-semantic-communications-theory-of-mind-generative-ai-an  # 41p
-# a-survey-on-semantic-communication-for-vision-categories-frameworks-enabling-tec  # 24p
-# a-survey-on-semantic-communication-networks-architecture-security-and-privacy     # 35p
+ a-survey-on-semantic-communication-for-vision-categories-frameworks-enabling-tec  # 24p
+ a-survey-on-semantic-communication-networks-architecture-security-and-privacy     # 35p
 # comai-the-convergence-of-communication-and-artificial-intelligence                # 35p
 # engineering-semantic-communication-a-survey                                       # 31p
 # generative-ai-enabled-semantic-communication-state-of-the-art-applications-and-t  # 40p
 # large-ai-models-for-future-communication                                          # 33p
-# less-data-more-knowledge-building-next-generation-semantic-communication-network  # 40p
+ less-data-more-knowledge-building-next-generation-semantic-communication-network  # 40p
 # resource-optimization-for-semantic-communication-in-6g-networks-a-survey          # 41p
 # semantic-communication-empowered-6g-networks-techniques-applications-and-challen  # 22p
-# semantic-communication-gen-ai-paper                                               # 20p
+ semantic-communication-gen-ai-paper                                               # 20p
 # semantic-communications-for-future-internet-fundamentals-applications-and-challe  # 38p
 # semantic-empowered-communications-2023                                            # 38p
-# semcom-principles-and-challenges                                                  # 32p
+ semcom-principles-and-challenges                                                  # 32p
 # semcom-survey-of-theoretical-development                                          # 29p
 
 # ========================================================================
@@ -36,32 +34,32 @@
 # advances-and-challenges-in-semantic-textual-similarity-survey                     # 16p
 # attention-is-all-you-need-paper-google                                            # 15p
 # deep-learning-enabled-semantic-communication-systems                              # 13p
-# efficient-estimation-of-word-representations-in-vector-space                      # 12p
+ efficient-estimation-of-word-representations-in-vector-space                      # 12p
 # semantic-coding-for-text-transmission-an-iterative-design                         # 10p
 # semantic-comms-review-paper                                                       # 13p
-# semantic-communication-with-memory                                                # 12p
+ semantic-communication-with-memory                                                # 12p
 # transformer-empowered-6g-networks                                                 # 9p
 
 # ========================================================================
 # SHORT  (2-8 pages, conference/primary papers)  --  19 papers, HOLD OUT 6
 # ========================================================================
 # a-robust-deep-learning-enabled-semantic-communication-system-for-text             # 6p
-# a-survey-on-semantic-communications-system-based-on-multi-modal-data              # 4p
+ a-survey-on-semantic-communications-system-based-on-multi-modal-data              # 4p
 # a-survey-on-semantic-encoder-technology-trends-for-6g-task-oriented-semantic-com  # 5p
-# bvcs-an-integrated-bert-vector-cosine-similarity-metric-for-text-semantic-commun  # 6p
-# coarse-to-fine-semantic-communication-systems-for-text-transmission               # 5p
+ bvcs-an-integrated-bert-vector-cosine-similarity-metric-for-text-semantic-commun  # 6p
+ coarse-to-fine-semantic-communication-systems-for-text-transmission               # 5p
 # end-to-end-generative-semantic-communication-powered-by-shared-semantic-knowledg  # 6p
-# lessenergy-moresemantics-tranformersforgreensemcom                                # 7p
+ lessenergy-moresemantics-tranformersforgreensemcom                                # 7p
 # llm-based-semantic-communication-the-way-from-task-originated-to-general          # 5p
-# multi-modal-semantic-communication-systems-for-sustainability-a-comprehensive-su  # 6p
+ multi-modal-semantic-communication-systems-for-sustainability-a-comprehensive-su  # 6p
 # on-using-bert-embeddings-for-text-semantic-communication                          # 4p
 # optimizing-wireless-resource-allocation-for-enhanced-semantic-communication-syst  # 8p
-# r-deepsc-paper-literal-text-noise-vs-adversarial-physical-noise                   # 6p
+ r-deepsc-paper-literal-text-noise-vs-adversarial-physical-noise                   # 6p
 # research-on-knowledge-extraction-based-on-semantic-similarity                     # 6p
 # robust-semantic-communication-driven-by-knowledge-graph                           # 5p
 # robust-semcom-against-noise                                                       # 7p
 # semantic-communications-a-comprehensive-survey-for-future-research-issues         # 5p
 # semcomadaptivetransformer                                                         # 5p
 # transferr-aided-compression                                                       # 6p
-# vq-sdsc-vector-quantized-satellite-digital-semantic-communication-framework       # 2p
+ vq-sdsc-vector-quantized-satellite-digital-semantic-communication-framework       # 2p
 
