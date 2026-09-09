@@ -195,3 +195,30 @@ ambiguous case but this one is not ambiguous.
 Evidence: sizes 2,507,216 vs 2,507,060 bytes; identical titles; both %PDF-1.5.
 Reversible? Yes — `corpus/provenance.json` records every collapsed source file,
 so any decision here can be revisited without going back to the source folder.
+
+## D-007 — arXiv preprint removed where the published version is also present
+Date: 2026-09-09
+Phase: 0
+Decision: `semantic-for-future-internet-2022` (arXiv preprint) removed; the
+published version, `semantic-communications-for-future-internet-fundamentals-...`
+(IEEE COMST vol. 25 no. 1, 2023), is kept. Same paper, Yang et al. Corpus is now
+42 unique papers, down from 43.
+Alternatives considered: (i) keep both as separate papers; (ii) keep both but
+constrain them to the same side of the dev/holdout split.
+Reasoning: extracted first-page text confirms identical title and author list;
+the files differ because one is the preprint and one the typeset version. Under
+(i) the pair could straddle the dev/holdout boundary, which would mean the system
+had been tuned on the very content the holdout exists to test — silent
+contamination of the one number the split protects, and undetectable after the
+fact. (ii) preserves both but requires a constraint the user would have to
+remember while hand-picking the split, which is exactly the kind of discipline-
+based guard CLAUDE.md rules out. The published version is preferred as the
+citable artifact and the one with final section numbering.
+Note: the third 38-page file, `semantic-empowered-communications-2023`, was
+checked at the same time and is a genuinely different paper (Lu et al.,
+"Semantics-Empowered Communications"). Retained.
+Evidence: first-page text extraction, 2026-09-09. Preprint header "Semantic
+Communications for Future Internet: Fundamentals, Applications, and Challenges,
+Wanting Yang, Hongyang Du, ..." matches the published version's header verbatim.
+Reversible? Yes — the source folder is untouched and `corpus/provenance.json`
+records the preprint filename against the kept paper.

@@ -34,7 +34,7 @@ frozen; `docker compose up` works.
 | 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton | COMPLETE | — |
 | 0.3 | `docker-compose.yml`: Postgres 16 + pgvector — **written, not yet smoke-tested (Docker not installed)** | IN PROGRESS | Q-B8 |
 | 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
-| 0.5 | Seed corpus: 43 unique papers copied, `corpus/manifest.csv` committed (50 files → 43, see D-006) | COMPLETE | — |
+| 0.5 | Seed corpus: 42 unique papers copied, `corpus/manifest.csv` committed (50 files → 42, see D-006/D-007) | COMPLETE | — |
 | 0.6a | **User** splits 2/3 dev / 1/3 holdout → `eval/holdout_papers.txt`, confirms frozen | **BLOCKED ON HUMAN** | **CHECKPOINT 1** |
 | 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests | COMPLETE (awaits real split to load) | — |
 | 0.7 | **User** writes and freezes `schema/semcom.yaml` (dated); Claude may draft for editing | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
@@ -62,7 +62,7 @@ frozen; `docker compose up` works.
 CHECKPOINT 1 clears:** `eval/holdout_papers.txt` must exist and the user must have
 confirmed the split is frozen. This is a hard refusal, not a reminder.
 
-**Exit criteria:** all 43 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
+**Exit criteria:** all 42 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.
 
 Task list to be planned when Phase 0 closes. Per the working agreement, later phases
