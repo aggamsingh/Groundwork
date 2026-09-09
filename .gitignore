@@ -1,0 +1,31 @@
+# Corpus PDFs are never committed — only corpus/manifest.csv is.
+corpus/**
+!corpus/manifest.csv
+!corpus/.gitkeep
+
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Experiment tracking / local artifacts
+mlruns/
+mlflow.db
+artifacts/
+*.ckpt
+*.safetensors
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
