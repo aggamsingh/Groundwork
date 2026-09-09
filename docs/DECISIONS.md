@@ -145,3 +145,53 @@ Reversible? Yes as machinery; the property it protects is not. A holdout that ha
 been read cannot be un-read.
 
 ---
+
+## D-005 — Paper ids are filename-derived slugs, not arXiv ids or DOIs
+Date: 2026-09-09
+Phase: 0
+Decision: `external_id` is a slug derived from the paper's filename — lowercased,
+leading "12. " numbering stripped, non-alphanumerics collapsed to hyphens, capped
+at 80 characters. `corpus/provenance.json` records which source file(s) each id
+came from. Ids are fixed from here.
+Alternatives considered: (i) arXiv id or DOI, as recommended on 2026-09-09;
+(ii) a content hash prefix; (iii) sequential numbering.
+Reasoning: (i) was the recommendation and is still the better scheme in the
+abstract — externally resolvable, stable, and it would let the Phase 7 UI link
+out. It was abandoned on contact with the actual corpus: the files are named by
+descriptive title, not identifier, and several are informally named
+("semcom principles and challenges", "robust semcom against noise"), so
+recovering a DOI for each of 43 papers means opening each PDF. That work belongs
+in Phase 1, where the parser extracts title and reference metadata anyway, and
+doing it by hand now would duplicate it. (ii) is stable but unreadable, which
+matters because the user hand-writes these ids into `eval/holdout_papers.txt` and
+into 60 eval labels — an unreadable id makes those tasks error-prone in a way
+that is invisible until the labels are wrong. (iii) has the same problem and
+additionally renumbers when the corpus grows to ~120, which it will (C-001).
+Slugs are readable, stable under corpus growth, and derived deterministically.
+Consequence accepted: ids are not externally resolvable. When Phase 1 extracts
+DOIs they are stored as a *separate column*, not swapped into `external_id`,
+because eval labels will already reference the slug by then (see D-003 on why
+re-keying after CHECKPOINT 4 is prohibitively expensive).
+Evidence: the 43-paper corpus as received, 2026-09-09.
+Reversible? Cheaply now, expensively after the user writes the holdout list and
+eval labels against these ids. Effectively fixed once CHECKPOINT 1 is frozen.
+
+## D-006 — Near-duplicate PDFs collapsed by slug as well as by hash
+Date: 2026-09-09
+Phase: 0
+Decision: Dedupe on content hash first, then on derived slug, keeping the largest
+file. The 50 source files collapsed to 43 unique papers: 6 byte-identical pairs
+plus one same-title pair differing by 156 bytes.
+Alternatives considered: (i) hash-only dedupe, keeping both BVCS copies as
+separate papers; (ii) ask the user to resolve every near-duplicate by hand.
+Reasoning: the two BVCS files share a title, PDF version, and size to within
+0.006%, which is the signature of the same PDF downloaded twice with differing
+embedded metadata, not two versions of a paper. Under (i) that paper would be
+ingested twice, and a duplicate in the corpus is not cosmetic here: it inflates
+retrieval recall for its own content, can occupy two slots in a top-k, and would
+let one paper appear on both sides of a dev/holdout split — quietly contaminating
+the number the split exists to protect. (ii) is the right move for a genuinely
+ambiguous case but this one is not ambiguous.
+Evidence: sizes 2,507,216 vs 2,507,060 bytes; identical titles; both %PDF-1.5.
+Reversible? Yes — `corpus/provenance.json` records every collapsed source file,
+so any decision here can be revisited without going back to the source folder.

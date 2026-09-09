@@ -34,7 +34,7 @@ frozen; `docker compose up` works.
 | 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton | COMPLETE | — |
 | 0.3 | `docker-compose.yml`: Postgres 16 + pgvector — **written, not yet smoke-tested (Docker not installed)** | IN PROGRESS | Q-B8 |
 | 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
-| 0.5 | Freeze SemCom corpus (~120 papers) — `scripts/build_manifest.py` written and tested; **awaiting PDFs** | BLOCKED | Q-B1 |
+| 0.5 | Seed corpus: 43 unique papers copied, `corpus/manifest.csv` committed (50 files → 43, see D-006) | COMPLETE | — |
 | 0.6a | **User** splits 2/3 dev / 1/3 holdout → `eval/holdout_papers.txt`, confirms frozen | **BLOCKED ON HUMAN** | **CHECKPOINT 1** |
 | 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests | COMPLETE (awaits real split to load) | — |
 | 0.7 | **User** writes and freezes `schema/semcom.yaml` (dated); Claude may draft for editing | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
@@ -46,7 +46,6 @@ frozen; `docker compose up` works.
 
 | ID | Question | Blocks |
 |---|---|---|
-| Q-B1 | Where are the ~120 SemCom PDFs? | 0.5, and Phase 0 exit |
 | Q-B2 | Gold comparison table — does it exist, in what form? | 0.8, and Phase 0 exit |
 | Q-B3 | Which generator API is available? | Phase 2 |
 | Q-B4 | GPU available, and how much VRAM? | Phase 4 / 5 architecture |
@@ -63,17 +62,28 @@ frozen; `docker compose up` works.
 CHECKPOINT 1 clears:** `eval/holdout_papers.txt` must exist and the user must have
 confirmed the split is frozen. This is a hard refusal, not a reminder.
 
-**Exit criteria:** 120 papers ingested, <5% hard parse failures, failures inspectable,
+**Exit criteria:** all 43 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.
 
 Task list to be planned when Phase 0 closes. Per the working agreement, later phases
 are not planned in advance.
+
+### ⚠ Reminder owed at Phase 1 close — grow the corpus to ~120 papers
+
+The user asked on 2026-09-09 to be reminded of this after Phase 1. Per C-001 the
+corpus was seeded at 43 papers so ingestion work could start immediately, on the
+commitment that it reaches ~120 **before the Phase 2 baseline is measured**.
+New papers join the **dev** side only — the holdout is frozen once and never extended.
+This is a Phase 2 entry gate, not a suggestion: a ~15-paper holdout cannot support
+the Phase 6 headline number.
 
 ---
 
 ## Phase 2 — Naive baseline and eval harness
 
 **Status:** NOT STARTED
+
+**Entry gate:** corpus at ~120 papers (C-001). Do not measure the baseline on 43.
 
 **CHECKPOINT 4 lands here:** the user hand-labels 60 questions with supporting spans
 across the five types. Claude does not generate them.
