@@ -118,14 +118,19 @@ fields:
     # SEPARATE axis (see semantic_noise_model below) because several papers model
     # adversarial/semantic noise on top of a physical channel, and conflating the
     # two would make their numbers look incomparable when they are not.
-    # TODO(user): confirm. Anything missing?
     values:
       - awgn
       - rayleigh_fading
       - rician_fading
+      - nakagami_fading
       - erasure
       - multipath
+      - fading_unspecified     # "fading channel" with no distribution named
+      - real_world_measured    # over-the-air / testbed, not simulated
       - none                   # no physical channel modelled
+    # `fading_unspecified` earns its place: papers that say only "a fading
+    # channel" are common, and forcing them into rayleigh_fading would fabricate
+    # a comparison the paper does not support. It is a real value, not a gap.
     notes: >
       A paper with `none` is not comparable on BLEU-vs-SNR with a paper that
       models AWGN. The contradiction detector must not flag them as disagreeing.
@@ -166,8 +171,9 @@ fields:
     type: enum
     cardinality: many
     description: Which evaluation metrics the paper reports.
-    # TODO(user): confirm. BLEU and sentence-similarity dominate the text papers
-    # in the dev set; the image metrics are here for the multimodal surveys.
+    # BLEU and sentence-similarity dominate the text papers; image metrics are
+    # here for the multimodal surveys. See `metric_variant` in reported_values --
+    # a bare "BLEU" is not a comparable number without its n-gram order.
     values:
       - bleu
       - sentence_similarity
@@ -179,7 +185,9 @@ fields:
       - word_error_rate
       - accuracy
       - mutual_information
+      - mse
       - latency
+      - throughput
       - energy_efficiency
       - spectral_efficiency
       - bandwidth_compression_ratio
@@ -191,21 +199,35 @@ fields:
       Individual numeric results. One record per (metric, condition) pair --
       NOT one per metric, because the same metric is reported at many SNRs.
     record_fields:
-      metric:        one of the `metrics` values
-      value:         float
+      metric:         one of the `metrics` values
+      metric_variant: e.g. bleu n-gram order (1/2/3/4), or the specific
+                      similarity model used. `not_reported` when the paper
+                      does not say.
+      value:          float
       snr_db:        float or not_applicable
       channel_model: one of the `channel_model` values
       semantic_noise_model: one of the `semantic_noise_model` values
       dataset:       string
-      system:        which system the number belongs to (the paper's own, or a baseline)
-      is_baseline:   bool
+      channel_uses_per_symbol: float or not_reported   # bandwidth/rate axis
+      system:         which system the number belongs to (the paper's own, or a baseline)
+      is_baseline:    bool
     notes: >
       `system` and `is_baseline` matter more than they look. Papers report their
       own numbers next to reimplemented baselines, and attributing a baseline's
       score to the paper proposing it is the most likely numeric error mode.
-    # TODO(user): is (metric, snr, channel, semantic_noise, dataset, system)
-    # enough to address a number uniquely, or does another axis vary in this
-    # literature -- code rate, channel uses per symbol, compression ratio?
+    # Q4 resolved 2026-09-09. Two axes were missing and both are error sources:
+    #
+    #   metric_variant -- "BLEU" alone is not a number. BLEU-1 and BLEU-4 on the
+    #   same system at the same SNR differ by a wide margin, and text SemCom
+    #   papers report several orders on one plot. Comparing across orders would
+    #   manufacture disagreements between papers that agree.
+    #
+    #   channel_uses_per_symbol -- the rate/bandwidth axis. Papers trade fidelity
+    #   against channel uses, so two BLEU scores at the same SNR are not
+    #   comparable if one spent twice the bandwidth.
+    #
+    # TODO(user): worth a sanity check before freezing -- this is a judgement
+    # about your literature that abstracts could not settle.
 
   - name: limitations
     type: string
@@ -253,8 +275,48 @@ comparison_table_default_columns:
 # ---------------------------------------------------------------------------
 contradiction:
   comparable_on: reported_values
-  setup_must_match: [metric, dataset, channel_model, semantic_noise_model, snr_db]
-  # TODO(user): what relative gap counts as a real disagreement rather than
-  # ordinary experimental variation? I have put 10% as a placeholder; you know
-  # what is noise in this literature and what is a genuine conflict.
-  disagreement_threshold_relative: 0.10
+  setup_must_match:
+    - metric
+    - metric_variant
+    - dataset
+    - channel_model
+    - semantic_noise_model
+    - snr_db
+    - channel_uses_per_symbol
+
+  # Q5 resolved 2026-09-09. A single relative threshold was replaced by
+  # per-metric absolute tolerances.
+  #
+  # Why: a flat 10% relative gap is simultaneously too loose and too tight.
+  # BLEU and similarity scores are bounded on [0,1] and cluster high, so 10%
+  # relative on a BLEU of 0.90 tolerates a gap of 0.09 -- an enormous difference
+  # in this literature, and real disagreements would go unreported. Meanwhile
+  # PSNR is measured in dB on an unbounded scale where 10% of 30 dB is 3 dB,
+  # far beyond any genuine conflict. Relative thresholds only make sense for
+  # ratio-scale quantities; most of these metrics are not that.
+  #
+  # Tolerances below are deliberately conservative -- a gap must clear the
+  # tolerance to be *called* a contradiction. Over-reporting contradictions
+  # is the worse failure: it costs the user's attention on every false one,
+  # and the spec's whole posture is that abstention beats a confident error.
+  tolerance:
+    bleu:                 0.02     # absolute, 0-1 scale
+    sentence_similarity:  0.02
+    bert_score:           0.02
+    cosine_similarity:    0.02
+    accuracy:             0.02
+    word_error_rate:      0.02
+    mse:                  relative_0.10
+    psnr:                 0.5      # dB
+    ssim:                 0.01
+    msssim:               0.01
+    mutual_information:   relative_0.10
+    latency:              relative_0.20
+    throughput:           relative_0.20
+    energy_efficiency:    relative_0.20
+    spectral_efficiency:  relative_0.10
+    bandwidth_compression_ratio: relative_0.10
+  default_tolerance: relative_0.10
+
+  # TODO(user): worth a sanity check before freezing. The 0.02 BLEU figure is
+  # the one to scrutinise -- it decides how often the contradiction view fires.

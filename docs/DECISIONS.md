@@ -285,3 +285,45 @@ Evidence: first-page text of 22 of the 28 dev papers (6 use embedded font
 encodings the throwaway extractor cannot decode — a Phase 1 parser requirement,
 not a schema issue). Holdout papers were excluded via assert_no_holdout.
 Reversible? Yes — the schema is still `draft` and the user's to rewrite.
+
+## D-010 — Number addressability (metric_variant, channel uses) and per-metric contradiction tolerances
+Date: 2026-09-09
+Phase: 0
+Decision: Two schema questions the user delegated ("decide using your best
+judgement"). (1) `reported_values` gains `metric_variant` and
+`channel_uses_per_symbol`, both added to the contradiction match key.
+(2) The single `disagreement_threshold_relative: 0.10` is replaced by per-metric
+absolute tolerances, with a relative default for ratio-scale quantities only.
+Alternatives considered: (i) keep (metric, snr, channel, dataset, system) as the
+address, as drafted; (ii) keep one relative threshold across all metrics;
+(iii) defer both to Phase 4 when contradiction detection is actually built.
+Reasoning on (1): "BLEU" is not a number. Text SemCom papers plot BLEU-1 through
+BLEU-4 on one figure, and the orders differ by a wide margin on the same system
+at the same SNR. Under (i) the contradiction detector would compare a BLEU-1 from
+one paper against a BLEU-4 from another, see a large gap, and report a conflict
+between two papers that agree — manufacturing exactly the kind of confident error
+this project exists to prevent. `channel_uses_per_symbol` is the same problem on
+the rate axis: papers trade fidelity against bandwidth, so equal-SNR scores are
+not comparable at unequal channel uses.
+Reasoning on (2): a flat relative threshold is wrong in both directions. BLEU and
+similarity scores are bounded on [0,1] and cluster high, so 10% relative on 0.90
+tolerates a 0.09 gap — enormous here, and genuine disagreements would be silently
+dropped. PSNR is dB on an unbounded scale where 10% of 30 dB is 3 dB, far past
+any real conflict. Relative tolerance is only meaningful for ratio-scale
+quantities (latency, throughput, efficiency), so those keep it and the bounded
+metrics get absolute figures.
+Tolerances are set conservatively — a gap must exceed the tolerance to be called
+a contradiction. The asymmetry is deliberate: a false contradiction costs the
+user's attention every time the view is opened, while a missed one leaves the
+underlying numbers still visible in the comparison table. This matches the
+spec's general posture that abstention beats a confident error.
+(iii) rejected because the schema is frozen at Phase 0 and the claim store is
+built against it; adding condition axes later would invalidate every number
+already extracted.
+Evidence: none directly — judgement from the structure of the metrics, not from
+the corpus text. Flagged as TODO(user) in the schema: the 0.02 BLEU tolerance is
+the figure most worth the user's scrutiny, since it sets how often the
+contradiction view fires.
+Reversible? The tolerances are config and cheap to retune. The two new record
+fields are not — they are part of the claim store's primary key, so adding them
+after extraction runs would mean re-extracting the corpus.
