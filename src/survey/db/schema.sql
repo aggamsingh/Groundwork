@@ -29,6 +29,13 @@ CREATE TABLE papers (
     title         text,
     abstract      text,
     year          int,
+    venue         text,
+    page_count    int,
+    -- Resolved identifiers live in their own columns; external_id stays the
+    -- slug, because eval labels key off it and re-keying after CHECKPOINT 4
+    -- would invalidate them (D-005).
+    doi           text,
+    arxiv_id      text,
     source_path   text,                        -- path under corpus/, not committed
     sha256        text,                        -- content hash; idempotent re-ingest
     parser        text,                        -- which parser produced this (Phase 1 bake-off)

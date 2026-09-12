@@ -21,7 +21,7 @@ from pathlib import Path
 import psycopg
 
 from survey.evalharness.holdout import load_holdout_ids
-from survey.ingest import pymupdf_parser, store
+from survey.ingest import citations, pymupdf_parser, store
 from survey.ingest.model import ParseError
 
 PARSERS = {"pymupdf": pymupdf_parser.parse}
@@ -98,6 +98,18 @@ def main() -> int:
             counts[result.action] += 1
             marker = "!" if result.action == "quarantined" else " "
             print(f"{marker} [{i:>3}/{len(rows)}] {result.action:<11} {ext_id[:60]}")
+
+        # Citation resolution runs over the whole corpus at once: a reference can
+        # point at a paper ingested later in this same run.
+        stats = citations.resolve(conn, corpus_id=args.corpus)
+        conn.commit()
+        print(
+            f"\ncitations: {stats.resolved}/{stats.total} resolved "
+            f"({stats.by_doi} by doi, {stats.by_title} by title), "
+            f"{stats.unresolved} point outside the corpus"
+        )
+        if stats.self_citations_dropped:
+            print(f"           {stats.self_citations_dropped} self-citations dropped")
 
         # The split must be applied after ingestion, since it keys off paper ids.
         # Without this v_dev_papers is empty and the holdout guard is decorative.

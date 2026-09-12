@@ -83,7 +83,7 @@ comparison, so the bake-off is measured against something rather than debated.
 | 1.4 | GROBID service in docker-compose; adapter to the same storage interface | NOT STARTED |
 | 1.5 | Bake-off harness: both parsers over 20 papers, scored, winner recorded | NOT STARTED |
 | 1.6 | Table extraction — 18/42 papers (43%), header kept separate from body (D-013) | COMPLETE (baseline) |
-| 1.7 | Citation edges into `citation_edges`, resolved to corpus papers where possible | NOT STARTED |
+| 1.7 | Citation edges: 3,391 stored, 101 resolved to corpus papers (precision-first, P-003) | COMPLETE |
 | 1.8 | Async job pipeline: queue, progress, resumable | NOT STARTED |
 | 1.9 | Full run over 42 papers; failures inspectable | NOT STARTED |
 | 1.10 | Corpus-growth reminder to the user (~120 papers) | NOT STARTED |

@@ -95,3 +95,50 @@ quarantine clearing stale structure and recording its reason. The wider lesson,
 worth more than the fix: verify the measurement before debugging the thing it
 measures. Both wrong hypotheses came from trusting an ad-hoc SQL query I had
 written thirty seconds earlier.
+
+## P-003 — A third of resolved citation edges pointed at the wrong paper
+Date: 2026-09-13
+Phase: 1
+Symptom: citation resolution reported 216/3391 references linked to corpus
+papers, which looked reasonable. Sampling twelve of them showed four were wrong —
+a 33% false-positive rate. Examples: "Covert communication over noisy channels: A
+resolvability perspective" linked to "Engineering Semantic Communication: A
+Survey"; "Secure semantic communications: Fundamentals and challenges" linked to
+"Semantic Communications: Principles and Challenges"; "Cognitive semantic
+communication systems driven by knowledge graph" linked to "Robust Semantic
+Communication Driven by Knowledge Graph".
+First hypothesis (WRONG): the 0.75 overlap threshold was simply too low, and
+raising it to 0.9 would fix it. It would not have. The matcher compared *sets of
+tokens*, and in a corpus where every paper is about semantic communication, a
+short title like "Engineering Semantic Communication: A Survey" has all four of
+its content words present in references to unrelated work. Its score against
+those references was 1.0, not 0.75 — no threshold rejects it.
+Actual cause: bag-of-words overlap discards word order, which is the only signal
+distinguishing near-identical titles in a single-topic corpus. The measure was
+also asymmetric (share of the *title's* tokens found in the reference), so short
+titles were systematically easier to match — the generic ones, exactly the ones
+most likely to collide.
+Fix: replaced overlap with ordered-phrase containment — the paper's title must
+appear in the reference as a contiguous phrase. Three refinements followed, each
+from a false positive that survived the previous one:
+  1. A reference matching two corpus titles resolves to neither.
+  2. The phrase must end at a title boundary (quote, comma, period). Without this
+     "Deep Learning Enabled Semantic Communication Systems" (Xie) matched
+     references to "Deep learning-enabled semantic communication systems with
+     task-unaware transmitter" (Zhang) — a different paper whose title merely
+     starts the same way.
+  3. Line-break hyphenation ("Commu- nication") is joined, real hyphens
+     ("learning-enabled") become spaces — opposite treatments, distinguished by
+     the following whitespace.
+Resolution also now clears existing links before recomputing. Without that a
+precision fix cannot remove the bad edges it was written to prevent.
+Result: 216 links -> 101, all twelve re-sampled correct. Fewer edges, and the
+ones remaining are trustworthy.
+Cost: ~1 hour.
+Prevention: `tests/test_citations.py` pins every false positive above and every
+true positive as a test, using the real reference strings. The broader lesson:
+the first number looked fine, and only sampling the *content* of the output
+exposed the problem. A resolution rate is not a correctness measure — had this
+shipped, Phase 5 would have mined reranker training pairs from a graph where one
+edge in three was fabricated, and the damage would have surfaced as unexplained
+reranker underperformance weeks later.

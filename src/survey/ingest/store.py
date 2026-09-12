@@ -150,13 +150,17 @@ def store(
             paper_id = row[0]
             _clear_structure(conn, paper_id)
             cur.execute(
-                "UPDATE papers SET title=%s, abstract=%s, year=%s, source_path=%s, "
-                "sha256=%s, parser=%s, parsed_at=now(), ingest_status='ok', "
-                "failure_reason=NULL WHERE id=%s",
+                "UPDATE papers SET title=%s, abstract=%s, year=%s, venue=%s, "
+                "page_count=%s, doi=%s, source_path=%s, sha256=%s, parser=%s, "
+                "parsed_at=now(), ingest_status='ok', failure_reason=NULL "
+                "WHERE id=%s",
                 (
                     paper.title,
                     paper.abstract,
                     paper.year,
+                    paper.venue,
+                    paper.page_count,
+                    paper.doi,
                     source_path,
                     sha256,
                     paper.parser,
@@ -167,14 +171,18 @@ def store(
         else:
             cur.execute(
                 "INSERT INTO papers (corpus_id, external_id, title, abstract, year, "
-                "source_path, sha256, parser, parsed_at, ingest_status) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s, now(), 'ok') RETURNING id",
+                "venue, page_count, doi, source_path, sha256, parser, parsed_at, "
+                "ingest_status) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), 'ok') RETURNING id",
                 (
                     corpus_id,
                     paper.external_id,
                     paper.title,
                     paper.abstract,
                     paper.year,
+                    paper.venue,
+                    paper.page_count,
+                    paper.doi,
                     source_path,
                     sha256,
                     paper.parser,

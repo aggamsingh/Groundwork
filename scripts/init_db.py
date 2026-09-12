@@ -56,6 +56,27 @@ def apply_schema(conn: psycopg.Connection) -> None:
     print("  schema applied")
 
 
+# Columns added to `papers` after the initial schema shipped. schema.sql runs
+# only on a fresh volume, so an existing database needs these applied explicitly.
+# Kept as plain idempotent DDL rather than a migration framework: at this size a
+# framework would be more machinery than the problem deserves.
+MIGRATIONS = [
+    "ALTER TABLE papers ADD COLUMN IF NOT EXISTS venue text",
+    "ALTER TABLE papers ADD COLUMN IF NOT EXISTS page_count int",
+    "ALTER TABLE papers ADD COLUMN IF NOT EXISTS doi text",
+    "ALTER TABLE papers ADD COLUMN IF NOT EXISTS arxiv_id text",
+    "CREATE INDEX IF NOT EXISTS papers_doi_idx ON papers (doi)",
+]
+
+
+def migrate(conn: psycopg.Connection) -> None:
+    with conn.cursor() as cur:
+        for statement in MIGRATIONS:
+            cur.execute(statement)
+    conn.commit()
+    print(f"  {len(MIGRATIONS)} migrations applied (idempotent)")
+
+
 def verify(conn: psycopg.Connection) -> list[str]:
     problems: list[str] = []
     with conn.cursor() as cur:
@@ -117,6 +138,7 @@ def main() -> int:
     try:
         with psycopg.connect(args.dsn, connect_timeout=10) as conn:
             apply_schema(conn)
+            migrate(conn)
             problems = verify(conn)
     except psycopg.OperationalError as exc:
         print(f"\ncould not connect: {exc}", file=sys.stderr)
