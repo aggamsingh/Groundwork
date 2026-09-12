@@ -71,3 +71,26 @@ Impact:
     contamination the split exists to prevent. To be checked when the rows land.
   - The schema (CHECKPOINT 2) is now derived from the same notes, so schema and
     gold table share a vocabulary by construction rather than by coincidence.
+
+## C-003 — Gold table deferred from Phase 0 exit to a Phase 2 entry gate
+Date: 2026-09-13
+Original plan: spec §5 lists the frozen gold comparison table as a Phase 0 exit
+criterion, blocking Phase 1.
+Change: `eval/gold_table_semcom.csv` is deferred. Phase 0 may close without it.
+It becomes a **hard Phase 2 entry gate**, alongside CHECKPOINT 4 (the 60
+hand-labelled questions) and the corpus growth to ~120 papers (C-001).
+Trigger: user asked to postpone on 2026-09-13.
+Impact:
+  - Phase 1 is unblocked by this artifact. Nothing in ingestion, storage, or the
+    parser bake-off consumes the gold table.
+  - The deferral is also a genuine improvement in sequencing: after Phase 1 the
+    user fills these rows from clean parsed text with tables preserved, rather
+    than from raw PDFs. Same work, materially easier.
+  - Risk, and the reason for the gate rather than a plain deferral: a postponed
+    ground-truth artifact with no gate attached becomes a dropped one, and
+    Definition of Done #5 (numeric extraction accuracy, reported separately)
+    would then have nothing behind it. The gate is what makes this a deferral.
+  - CHECKPOINT 3 status changes from "Phase 0, blocking" to "Phase 2 entry,
+    blocking". It is NOT downgraded in importance and is still human-only.
+  - Phase 0's exit criteria are amended to: holdout frozen, schema frozen,
+    `docker compose up` verified. Gold table removed from that list.

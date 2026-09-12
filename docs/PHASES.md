@@ -25,8 +25,9 @@ A phase moves to `COMPLETE` only when every exit criterion is met and
 
 **Status:** IN PROGRESS (started 2026-09-09)
 
-**Exit criteria:** holdout split committed and untouchable; schema and gold table
-frozen; `docker compose up` works.
+**Exit criteria (amended by C-003):** holdout split committed and untouchable;
+schema frozen; `docker compose up` works. The gold table moved to a Phase 2
+entry gate.
 
 | # | Task | Status | Blocked by |
 |---|---|---|---|
@@ -38,15 +39,15 @@ frozen; `docker compose up` works.
 | 0.6a | Holdout split — **FROZEN 2026-09-09**, 14 holdout / 28 dev, chosen by the user | COMPLETE | — |
 | 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests, loading the frozen split | COMPLETE | — |
 | 0.7 | `schema/semcom.yaml` — **draft written 2026-09-09**, awaiting user edit + freeze | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
-| 0.8 | **User** exports `eval/gold_table_semcom.csv` from their survey — never synthesized | **BLOCKED ON HUMAN** | **CHECKPOINT 3** |
+| ~~0.8~~ | Gold table — **deferred to a Phase 2 entry gate (C-003)**. Not a Phase 0 blocker. | DEFERRED | — |
 | 0.9 | DECISIONS D-001, D-002, D-003, D-004 all written 2026-09-09 | COMPLETE | — |
-| 0.10 | Exit check + `docs/reports/phase-0.md` | NOT STARTED | 0.3, 0.6a, 0.7, 0.8 |
+| 0.10 | Exit check + `docs/reports/phase-0.md` | NOT STARTED | 0.3, 0.7 |
 
 ### Open questions blocking Phase 0
 
 | ID | Question | Blocks |
 |---|---|---|
-| Q-B2 | Gold comparison table — does it exist, in what form? | 0.8, and Phase 0 exit |
+| ~~Q-B2~~ | ~~Gold table — does it exist?~~ **Resolved 2026-09-13: no survey written yet; a 10-paper review matrix exists. Deferred (C-003).** | — |
 | Q-B3 | Which generator API is available? | Phase 2 |
 | Q-B4 | GPU available, and how much VRAM? | Phase 4 / 5 architecture |
 | ~~Q-B5~~ | ~~Holdout split — random or stratified?~~ **Resolved: the user chooses the papers. Claude does not generate the split.** | — |
@@ -59,8 +60,8 @@ frozen; `docker compose up` works.
 ## Phase 1 — Ingestion and corpus store
 
 **Status:** NOT STARTED — **CHECKPOINT 1 cleared 2026-09-09** (holdout frozen).
-Still gated on Phase 0 exit: tasks 0.3 (Docker), 0.7 (schema) and 0.8 (gold table)
-are outstanding, and no phase proceeds without its predecessor's exit criteria.
+Gated on Phase 0 exit: tasks 0.3 (Docker) and 0.7 (schema freeze) remain.
+The gold table no longer blocks this phase (C-003).
 
 **Exit criteria:** all 42 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.
@@ -83,10 +84,14 @@ the Phase 6 headline number.
 
 **Status:** NOT STARTED
 
-**Entry gate:** corpus at ~120 papers (C-001). Do not measure the baseline on 43.
+### Entry gates — all three are ground truth for the same baseline
 
-**CHECKPOINT 4 lands here:** the user hand-labels 60 questions with supporting spans
-across the five types. Claude does not generate them.
+1. **Corpus at ~120 papers** (C-001). Do not measure the baseline on 42.
+2. **CHECKPOINT 3 — `eval/gold_table_semcom.csv`** (C-003, deferred from Phase 0).
+   Rows must come from the DEVELOPMENT set only; a gold row for a holdout paper
+   means tuning against the holdout. Never synthesized.
+3. **CHECKPOINT 4 — 60 hand-labelled questions** with supporting spans across the
+   five types. Claude does not generate them.
 
 **Exit criteria:** baseline numbers recorded in `docs/reports/phase-2.md` and committed.
 Eval runs by one command. This phase produces the number everything else is measured
