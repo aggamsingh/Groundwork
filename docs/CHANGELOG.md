@@ -114,3 +114,26 @@ Impact:
     survive contact with the corpus. Recording "hybrid" is the honest result; a
     declared winner would have meant discarding a measured advantage to satisfy
     the shape of the plan.
+
+## C-005 — No async job queue in Phase 1
+Date: 2026-09-13
+Original plan: spec §5 Phase 1 — "Async job pipeline: queue, progress, per-paper
+failure quarantine, resumable."
+Change: progress, quarantine and resumability are implemented; the async queue is
+not. Ingestion is a synchronous loop that commits after each paper.
+Trigger: the requirement the queue exists to serve is already met without it. A
+full corpus run is 42 papers in about 12 minutes, each paper commits on its own,
+and an interrupted run resumes by skipping unchanged papers — so the worst case
+of an interruption is losing one paper's work, which is what "resumable" means
+here.
+Impact:
+  - No concurrency: papers are parsed one at a time. GROBID would tolerate
+    parallel requests and the run would be meaningfully faster.
+  - This becomes a real constraint at the corpus sizes the spec anticipates.
+    Definition of Done #7 requires ingest + adapt of 100 papers in under 20
+    minutes; at the current ~17s per paper, 100 papers is roughly 28 minutes, so
+    the queue (or simple parallelism) is needed before that criterion can be met.
+  - Recorded now rather than after the corpus grows: the shortfall is arithmetic,
+    not a surprise waiting in Phase 2.
+  - Revisit when the corpus reaches ~120 papers (C-001), which is the same moment
+    the growth reminder comes due.

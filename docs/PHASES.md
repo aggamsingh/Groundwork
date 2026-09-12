@@ -84,10 +84,10 @@ comparison, so the bake-off is measured against something rather than debated.
 | 1.5 | Bake-off over 20 papers — no winner; hybrid adopted (D-014, C-004) | COMPLETE |
 | 1.6 | Table extraction — 18/42 papers (43%), header kept separate from body (D-013) | COMPLETE (baseline) |
 | 1.7 | Citation edges: 3,391 stored, 101 resolved to corpus papers (precision-first, P-003) | COMPLETE |
-| 1.8 | Async job pipeline: queue, progress, resumable | NOT STARTED |
-| 1.9 | Full run over 42 papers; failures inspectable | NOT STARTED |
+| 1.8 | Resumable pipeline: per-paper commit, progress, quarantine. **No async queue** (C-005) | COMPLETE |
+| 1.9 | Full hybrid run over 42 papers, 0 quarantined | COMPLETE |
 | 1.10 | Corpus-growth reminder to the user (~120 papers) | NOT STARTED |
-| 1.11 | Exit check + `docs/reports/phase-1.md` | NOT STARTED |
+| 1.11 | `scripts/phase1_exit_check.py` + `docs/reports/phase-1.md` | IN PROGRESS |
 
 **~~The 21% problem~~ — retracted 2026-09-13.** The naive decoder failed on 11 of
 42, but PyMuPDF reads all 42 cleanly. The finding measured my throwaway
