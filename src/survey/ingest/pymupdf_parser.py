@@ -119,13 +119,29 @@ def _lines(doc: pymupdf.Document) -> list[tuple[str, float, bool, int]]:
                 spans = line.get("spans", [])
                 if not spans:
                     continue
-                text = "".join(s.get("text", "") for s in spans).strip()
+                text = (_clean("".join(s.get("text", "") for s in spans)) or "").strip()
                 if not text:
                     continue
                 size = max(s.get("size", 0.0) for s in spans)
                 bold = any("bold" in s.get("font", "").lower() for s in spans)
                 out.append((text, size, bold, page_no + 1))
     return out
+
+
+def _clean(text: str | None) -> str | None:
+    """Strip NUL bytes and other control characters.
+
+    Some PDFs in this corpus carry NUL inside text runs. Postgres rejects 0x00 in
+    text columns outright, so a paper that parses perfectly well is quarantined at
+    the storage layer for a reason that has nothing to do with parsing. Cleaning
+    belongs here, where the artifact originates, not in the store.
+    """
+    if text is None:
+        return None
+    cleaned = text.replace("\x00", "")
+    if any(ord(c) < 32 and c not in "\t\n\r" for c in cleaned):
+        cleaned = "".join(c for c in cleaned if ord(c) >= 32 or c in "\t\n\r")
+    return cleaned
 
 
 def _flush(buffer: list[str], pages: list[int], ordinal: int) -> ParsedParagraph | None:

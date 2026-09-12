@@ -78,8 +78,8 @@ comparison, so the bake-off is measured against something rather than debated.
 |---|---|---|
 | 1.1 | Parser candidates chosen and justified (D-012) | COMPLETE |
 | 1.2a | PyMuPDF parser + quality report over 42 papers (0% failures) | COMPLETE |
-| 1.2b | Persist parsed output to Postgres | IN PROGRESS |
-| 1.3 | Ingest is idempotent (re-run changes nothing) + per-paper quarantine on failure | NOT STARTED |
+| 1.2b | Persist parsed output to Postgres — 42 papers, 849 sections, 5,121 paragraphs | COMPLETE |
+| 1.3 | Idempotent re-run (42 unchanged) + quarantine, retryable (P-002) | COMPLETE |
 | 1.4 | GROBID service in docker-compose; adapter to the same storage interface | NOT STARTED |
 | 1.5 | Bake-off harness: both parsers over 20 papers, scored, winner recorded | NOT STARTED |
 | 1.6 | Table extraction — tables preserved as tables, header hierarchy intact | NOT STARTED |
