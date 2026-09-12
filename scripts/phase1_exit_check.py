@@ -86,18 +86,23 @@ def check(conn: psycopg.Connection, corpus_id: str = "semcom") -> list[tuple[boo
             )
         )
 
-        # A table is only "preserved as a table" if its structure survived.
+        # A table is only "preserved as a table" if its structure survived: a
+        # header kept separate from at least one body row. The original check
+        # demanded two body rows and failed on two genuine single-row tables
+        # ("The number of transmitted symbols for one image" is a header and one
+        # row), so it was measuring the wrong thing.
         cur.execute(
             "SELECT count(*) FROM paper_tables t JOIN papers p ON p.id=t.paper_id "
             "WHERE p.corpus_id=%s AND (t.grid->'rows') IS NOT NULL "
-            "AND jsonb_array_length(t.grid->'rows') >= 2",
+            "AND jsonb_array_length(t.grid->'rows') >= 1 "
+            "AND (t.grid->'header') IS NOT NULL",
             (corpus_id,),
         )
         structured = cur.fetchone()[0]
         results.append(
             (
                 structured == n_tables,
-                f"every table has >=2 structured rows: {structured}/{n_tables}",
+                f"every table has a header and >=1 body row: {structured}/{n_tables}",
             )
         )
 

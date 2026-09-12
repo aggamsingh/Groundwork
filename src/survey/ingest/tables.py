@@ -136,6 +136,14 @@ def extract_tables(doc: pymupdf.Document) -> list[ParsedTable]:
 
             label, caption = _find_caption(page, table.bbox)
 
+            # A single-body-row table is real often enough to keep — "the number
+            # of transmitted symbols for one image" is a header and one row — but
+            # it is also the shape diagram debris takes. Every genuine one in this
+            # corpus is captioned and none of the debris is, so require a caption
+            # at that size rather than rejecting or accepting the shape outright.
+            if len(body) < 2 and not (label or caption):
+                continue
+
             out.append(
                 ParsedTable(
                     ordinal=ordinal,
