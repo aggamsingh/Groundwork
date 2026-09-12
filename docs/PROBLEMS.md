@@ -142,3 +142,32 @@ exposed the problem. A resolution rate is not a correctness measure — had this
 shipped, Phase 5 would have mined reranker training pairs from a graph where one
 edge in three was fabricated, and the damage would have surfaced as unexplained
 reranker underperformance weeks later.
+
+## P-004 — GROBID container exited immediately on startup
+Date: 2026-09-13
+Phase: 1
+Symptom: `docker compose up -d grobid` reported the container started, but it
+exited with code 1 within a minute and `/api/isalive` never answered. The image
+pulled and started cleanly; nothing in compose output suggested a problem.
+First hypothesis (WRONG): the service was simply slow to load its CRF models —
+GROBID is known to take 30-60s on first start, and the healthcheck has a 60s
+start period. Waiting longer was the obvious move and would have achieved
+nothing, because the process was already dead.
+Actual cause: `java.lang.NullPointerException: Cannot invoke
+"jdk.internal.platform.CgroupInfo.getMountPoint()" because "anyController" is
+null`. The JDK in GROBID 0.8.0 probes cgroups at startup to size its heap against
+the container's limits, and that probe NPEs against Docker Desktop's WSL2 cgroup
+v2 layout. The failure is in `Bootstrap.registerMetrics`, before any GROBID code
+runs, so nothing GROBID-specific appears in the logs.
+Fix: `JAVA_OPTS: "-XX:-UseContainerSupport -Xmx2g"`. Disabling container-awareness
+skips the cgroup probe entirely. `-Xmx` then has to be explicit, since the JVM can
+no longer read the container's memory limit to infer a default.
+Cost: ~20 minutes.
+Prevention: the workaround is recorded as a comment in `docker-compose.yml`
+explaining *why* the flag is there, so nobody removes it later as apparent
+tuning. Also: `docker compose ps` hides exited containers, which is what made
+this look like a slow start rather than a crash — `docker ps -a` and
+`docker logs` were what actually diagnosed it, within seconds of being run.
+The pattern repeats P-001 exactly: a service that will not answer was assumed to
+be starting slowly, when it had already died. Check whether the process is alive
+before waiting on it.
