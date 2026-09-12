@@ -16,6 +16,7 @@ import argparse
 import csv
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import psycopg
@@ -38,6 +39,12 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--force", action="store_true", help="re-parse unchanged papers")
     ap.add_argument("--dsn", default=store.dsn())
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="parallel parse workers (storage stays serial)",
+    )
     args = ap.parse_args()
 
     manifest = CORPUS / "manifest.csv"
@@ -64,53 +71,81 @@ def main() -> int:
         return 1
 
     with conn:
+        todo = []
         for i, row in enumerate(rows, 1):
-            ext_id = row["external_id"]
-            path = CORPUS / row["filename"]
             # Skip before parsing, not after. The manifest already carries the
             # content hash, so an unchanged paper costs a single query instead of
-            # ~17s of parsing.
+            # ~16s of parsing.
             if not args.force and store.is_unchanged(
-                conn, ext_id, row["sha256"], args.parser, corpus_id=args.corpus
+                conn, row["external_id"], row["sha256"], args.parser,
+                corpus_id=args.corpus,
             ):
                 counts["unchanged"] += 1
-                print(f"  [{i:>3}/{len(rows)}] {'unchanged':<11} {ext_id[:60]}")
+                print(f"  [{i:>3}/{len(rows)}] {'unchanged':<11} "
+                      f"{row['external_id'][:60]}")
                 continue
+            todo.append((i, row))
 
+        # Parsing runs in a thread pool; storing stays on this thread.
+        #
+        # Parsing is I/O-bound — an HTTP round trip to GROBID plus PyMuPDF, which
+        # releases the GIL in its C extension — so threads genuinely overlap here.
+        # Writes are deliberately NOT parallel: one connection, one transaction at
+        # a time, so per-paper commit still means an interrupted run loses at most
+        # one paper. Concurrency is bounded because GROBID's own pool is.
+        def _parse_one(item):
+            _, row_ = item
             try:
-                paper = parse(path, ext_id)
-                result = store.store(
-                    conn,
-                    paper,
-                    sha256=row["sha256"],
-                    corpus_id=args.corpus,
-                    source_path=str(path),
-                    force=args.force,
-                )
-            except (ParseError, Exception) as exc:
-                # A storage failure aborts the transaction, so the quarantine
-                # write would land in a poisoned one. Roll back first.
-                conn.rollback()
-                reason = (
-                    str(exc)
-                    if isinstance(exc, ParseError)
-                    else f"UNEXPECTED {type(exc).__name__}: {exc}"
-                )
-                result = store.quarantine(
-                    conn,
-                    ext_id,
-                    reason,
-                    corpus_id=args.corpus,
-                    sha256=row["sha256"],
-                    source_path=str(path),
-                )
-            # Commit per paper: an interrupted run loses at most one paper,
-            # which is what makes the run resumable rather than restartable.
-            conn.commit()
+                parsed = parse(CORPUS / row_["filename"], row_["external_id"])
+                return row_, parsed, None
+            except Exception as exc:  # noqa: BLE001 - reported per paper below
+                return row_, None, exc
 
-            counts[result.action] += 1
-            marker = "!" if result.action == "quarantined" else " "
-            print(f"{marker} [{i:>3}/{len(rows)}] {result.action:<11} {ext_id[:60]}")
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            done = 0
+            # pool.map preserves input order, so progress reads sequentially even
+            # though the parses complete out of order.
+            for row, paper, exc in pool.map(_parse_one, todo):
+                done += 1
+                ext_id = row["external_id"]
+                path = CORPUS / row["filename"]
+                if exc is not None:
+                    conn.rollback()
+                    reason = (
+                        str(exc)
+                        if isinstance(exc, ParseError)
+                        else f"UNEXPECTED {type(exc).__name__}: {exc}"
+                    )
+                    result = store.quarantine(
+                        conn, ext_id, reason, corpus_id=args.corpus,
+                        sha256=row["sha256"], source_path=str(path),
+                    )
+                else:
+                    try:
+                        result = store.store(
+                            conn, paper, sha256=row["sha256"],
+                            corpus_id=args.corpus, source_path=str(path),
+                            force=args.force,
+                        )
+                    except Exception as store_exc:  # noqa: BLE001
+                        conn.rollback()
+                        result = store.quarantine(
+                            conn, ext_id,
+                            f"UNEXPECTED {type(store_exc).__name__}: {store_exc}",
+                            corpus_id=args.corpus, sha256=row["sha256"],
+                            source_path=str(path),
+                        )
+                # Commit per paper: an interrupted run loses at most one paper,
+                # which is what makes the run resumable rather than restartable.
+                conn.commit()
+
+                counts[result.action] += 1
+                marker = "!" if result.action == "quarantined" else " "
+                print(
+                    f"{marker} [{done:>3}/{len(todo)}] {result.action:<11} "
+                    f"{ext_id[:60]}",
+                    flush=True,
+                )
 
         # Citation resolution runs over the whole corpus at once: a reference can
         # point at a paper ingested later in this same run.

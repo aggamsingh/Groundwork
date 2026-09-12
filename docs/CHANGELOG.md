@@ -137,3 +137,9 @@ Impact:
     not a surprise waiting in Phase 2.
   - Revisit when the corpus reaches ~120 papers (C-001), which is the same moment
     the growth reminder comes due.
+UPDATE 2026-09-13: partially resolved without a queue. Parsing now runs in a
+thread pool (D-016), taking a full 42-paper run from 692s to 252s — about 6s per
+paper, so 100 papers is ~10 minutes against the 20-minute budget. Definition of
+Done #7 is reachable without the queue. The queue remains unbuilt and is still
+the right answer if ingestion ever needs to survive a crash mid-run or report
+progress to a UI.

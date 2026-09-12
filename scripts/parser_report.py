@@ -154,6 +154,7 @@ def main() -> int:
     print(f"  abstract found     {pct(sum(bool(p.abstract) for p in ok))}")
     print(f"  year found         {pct(sum(p.year is not None for p in ok))}")
     print(f"  doi found          {pct(sum(bool(p.doi) for p in ok))}")
+    print(f"  venue found        {pct(sum(bool(p.venue) for p in ok))}")
     print(f"  >=1 reference      {pct(sum(len(p.references) > 0 for p in ok))}")
     print(f"  >=3 sections       {pct(sum(len(p.sections) >= 3 for p in ok))}")
     print(f"  >=1 table          {pct(sum(len(p.tables) > 0 for p in ok))}")

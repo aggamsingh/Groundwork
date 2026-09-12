@@ -51,8 +51,16 @@ TEI_DOC = """<?xml version="1.0" encoding="UTF-8"?>
       </div>
       <div>
         <head n="2.1">System Model</head>
-        <p>The channel is modelled as AWGN.</p>
+        <p>The received signal is given by</p>
+        <formula xml:id="f0">y = hx + n</formula>
+        <p>where n is Gaussian noise.</p>
       </div>
+      <figure xml:id="fig_0">
+        <head>Fig. 2</head>
+        <figDesc>BLEU score versus SNR under AWGN for the proposed
+        system.</figDesc>
+      </figure>
+      <note place="foot" n="1">This work was supported by a grant.</note>
     </body>
     <back>
       <div type="references">
@@ -109,6 +117,31 @@ class TestParseTei(unittest.TestCase):
         intro = next(s for s in self.paper.sections if s.heading == "I INTRODUCTION")
         self.assertIn("bits", intro.paragraphs[0].text)
         self.assertEqual(len(intro.paragraphs), 2)
+
+    def test_formulas_are_kept_in_document_order(self) -> None:
+        # Equations are <formula> siblings of <p>, not children. A <p>-only walk
+        # drops every equation in the paper and leaves the surrounding prose
+        # ("The received signal is given by ... where n is Gaussian noise")
+        # referring to something that is no longer there.
+        section = next(s for s in self.paper.sections if s.heading == "2.1 System Model")
+        texts = [p.text for p in section.paragraphs]
+        self.assertEqual(len(texts), 3)
+        self.assertIn("y = hx + n", texts[1])
+        self.assertTrue(texts[0].endswith("given by"))
+        self.assertTrue(texts[2].startswith("where n"))
+
+    def test_figure_captions_are_captured_and_labelled(self) -> None:
+        # Not figure understanding (a non-goal) -- the image is never looked at.
+        # Captions in this literature carry results that appear nowhere else.
+        section = next(
+            s for s in self.paper.sections if s.kind == "figure_caption"
+        )
+        self.assertIn("BLEU score versus SNR", section.paragraphs[0].text)
+        self.assertIn("Fig. 2", section.paragraphs[0].text)
+
+    def test_footnotes_are_captured_separately(self) -> None:
+        section = next(s for s in self.paper.sections if s.kind == "note")
+        self.assertIn("supported by a grant", section.paragraphs[0].text)
 
     def test_references_are_structured(self) -> None:
         # The whole point of GROBID over the baseline: title and DOI as fields.

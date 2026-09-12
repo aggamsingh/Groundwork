@@ -55,6 +55,12 @@ def parse(path: Path, external_id: str) -> ParsedPaper:
     except Exception:
         paper.tables = []
 
+    # Venue: GROBID never supplies it without `consolidateHeader`, so this is
+    # always a gap rather than sometimes one. Reading page 1 alone avoids paying
+    # for a second full parse on every paper just to fill one field.
+    if not paper.venue:
+        paper.venue = pymupdf_parser.venue_from_pdf(path)
+
     # Year: GROBID reports a date only when it can attribute one, which is right
     # for a bibliographic tool and wrong for us — we would rather have the year
     # printed on the page than a null. Only fills a gap; never overrides GROBID.

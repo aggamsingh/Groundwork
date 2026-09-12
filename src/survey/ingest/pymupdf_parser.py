@@ -157,6 +157,33 @@ def _flush(buffer: list[str], pages: list[int], ordinal: int) -> ParsedParagraph
     )
 
 
+def venue_from_pdf(path: Path) -> str | None:
+    """Read the venue from page 1 alone.
+
+    GROBID does not extract venue without `consolidateHeader`, which calls an
+    external service per paper. The hybrid needs the field but not a second full
+    parse to get it, so this reads one page instead of the whole document.
+    """
+    try:
+        with pymupdf.open(path) as doc:
+            if doc.page_count == 0:
+                return None
+            blocks = doc[0].get_text("dict")["blocks"]
+    except Exception:
+        return None
+
+    lines: list[tuple[str, float, bool, int]] = []
+    for block in blocks:
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            spans = line.get("spans", [])
+            text = (_clean("".join(s.get("text", "") for s in spans)) or "").strip()
+            if text:
+                lines.append((text, 0.0, False, 1))
+    return _guess_venue(lines)
+
+
 def parse(path: Path, external_id: str) -> ParsedPaper:
     try:
         doc = pymupdf.open(path)
@@ -181,6 +208,7 @@ def parse(path: Path, external_id: str) -> ParsedPaper:
         )
 
         paper.title = _guess_title(lines)
+        paper.venue = _guess_venue(lines)
         paper.tables = extract_tables(doc)
 
         sections: list[ParsedSection] = []
@@ -264,6 +292,37 @@ def parse(path: Path, external_id: str) -> ParsedPaper:
 
 
 _ARXIV_STAMP = re.compile(r"^\s*arXiv:\s*\d{4}\.\d{4,5}", re.I)
+
+# Venue lives in the page-1 running header in this corpus. GROBID does not
+# extract it at all without consolidateHeader, which calls an external service
+# per paper, so this heuristic is the source for the field. It is a heuristic:
+# coverage is reported rather than assumed, and a miss is `not_reported`.
+_VENUE_PATTERNS = [
+    re.compile(r"\bIEEE\s+(?:/\w+\s+)?TRANSACTIONS\s+ON\s+[A-Z][A-Z\s,&-]{4,60}", re.I),
+    re.compile(r"\bIEEE\s+(?:COMMUNICATIONS\s+)?(?:SURVEYS?\s*&?\s*TUTORIALS?)", re.I),
+    re.compile(r"\bIEEE\s+(?:JOURNAL|ACCESS|NETWORK|WIRELESS\s+COMMUNICATIONS"
+               r"(?:\s+LETTERS)?)[A-Z\s,&-]{0,40}", re.I),
+    re.compile(r"\bIEEE\s+[A-Z][a-zA-Z]*\s+Magazine\b"),
+    re.compile(r"\bProc(?:eedings)?\.?\s+(?:of\s+)?(?:the\s+)?[A-Z][\w\s.&-]{4,50}"),
+    re.compile(r"\bEntropy\b"),
+    re.compile(r"\barXiv\s+preprint\b", re.I),
+]
+
+
+def _guess_venue(lines: list[tuple[str, float, bool, int]]) -> str | None:
+    """Read the venue out of the page-1 running header, if it is there."""
+    page1 = " ".join(t for t, _, _, p in lines if p == 1)
+    for pattern in _VENUE_PATTERNS:
+        if m := pattern.search(page1):
+            venue = " ".join(m.group(0).split())
+            # Running headers run into the title; cut at a volume/issue marker.
+            venue = re.split(r",?\s+VOL\.|,?\s+NO\.|\s+\d{4}\b", venue, maxsplit=1)[0]
+            venue = venue.strip(" ,.;:-")
+            if 4 <= len(venue) <= 80:
+                return venue
+    if _ARXIV_STAMP.search(page1) or "arxiv" in page1.lower()[:400]:
+        return "arXiv preprint"
+    return None
 # IEEE style runs the abstract inline: "Abstract—With the advent of 6G ...".
 _INLINE_ABSTRACT = re.compile(r"^\s*abstract\s*[-–—:]{0,2}\s*", re.I)
 _INDEX_TERMS = re.compile(r"\b(index terms|keywords)\s*[-–—:]", re.I)

@@ -152,11 +152,19 @@ def parse_tei(tei_xml: str, external_id: str, page_count: int | None = None) -> 
             if heading and number:
                 heading = f"{number} {heading}"
 
+            # Walk the div's children in document order rather than selecting
+            # only <p>. Equations are <formula> siblings of <p>, not children of
+            # it, so a <p>-only walk silently drops every equation in the paper
+            # and leaves the prose around them referring to nothing.
             paragraphs = []
-            for i, p in enumerate(div.findall("tei:p", TEI)):
-                text = _clean(_text(p))
-                if text and len(text) > 1:
-                    paragraphs.append(ParsedParagraph(text=text, ordinal=i))
+            for child in div:
+                tag = child.tag.split("}")[-1]
+                if tag not in ("p", "formula"):
+                    continue
+                text = _clean(_text(child))
+                if not text or len(text) <= 1:
+                    continue
+                paragraphs.append(ParsedParagraph(text=text, ordinal=len(paragraphs)))
 
             if not paragraphs and not heading:
                 continue
@@ -167,6 +175,57 @@ def parse_tei(tei_xml: str, external_id: str, page_count: int | None = None) -> 
                     depth=(number or "").count(".") if number else 0,
                     kind="body",
                     paragraphs=paragraphs,
+                )
+            )
+
+        # Figure and table captions, kept as their own section so they are
+        # retrievable but distinguishable from body prose.
+        #
+        # This is not figure *understanding*, which is a non-goal — the image is
+        # never looked at. It is the caption text, which in this literature
+        # routinely carries the result itself ("BLEU score versus SNR under AWGN
+        # for the proposed system"). Dropping it loses findings that appear
+        # nowhere else in the paper. Marked `figure_caption` so a later phase can
+        # exclude it from generation context if captions turn out to invite
+        # claims about images we cannot see.
+        captions = []
+        for fig in body.findall(".//tei:figure", TEI):
+            label = _clean(_text(fig.find("tei:head", TEI)))
+            desc = _clean(_text(fig.find("tei:figDesc", TEI)))
+            text = " ".join(x for x in (label, desc) if x)
+            if text and len(text) > 5:
+                captions.append(
+                    ParsedParagraph(text=text, ordinal=len(captions))
+                )
+        if captions:
+            sections.append(
+                ParsedSection(
+                    heading="Figure and table captions",
+                    ordinal=len(sections),
+                    depth=0,
+                    kind="figure_caption",
+                    paragraphs=captions,
+                )
+            )
+
+        notes = [
+            ParsedParagraph(text=t, ordinal=i)
+            for i, t in enumerate(
+                filter(
+                    None,
+                    (_clean(_text(n)) for n in body.findall("tei:note", TEI)),
+                )
+            )
+            if len(t) > 5
+        ]
+        if notes:
+            sections.append(
+                ParsedSection(
+                    heading="Notes",
+                    ordinal=len(sections),
+                    depth=0,
+                    kind="note",
+                    paragraphs=notes,
                 )
             )
 

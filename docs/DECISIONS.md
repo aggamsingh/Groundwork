@@ -527,3 +527,48 @@ Evidence: to be recorded after the re-ingest completes. The number to watch is
 resolved edges, which should exceed the 101 the phrase matcher managed, with
 precision at least as good because identity matches cannot be coincidental.
 Reversible? Yes — additive columns and an extra matching stage.
+
+## D-016 — GROBID body extraction widened; ingestion parallelised
+Date: 2026-09-13
+Phase: 1 (post-close improvements)
+Decision: Three changes to the hybrid pipeline.
+(1) The TEI walk takes `<div>` children in document order rather than selecting
+only `<p>`, so `<formula>` siblings are kept in place; figure/table captions
+become a `figure_caption` section; footnotes become a `note` section.
+(2) Venue is read from the page-1 running header by pattern, since GROBID
+supplies none without `consolidateHeader`.
+(3) Parsing runs in a thread pool (`--workers`, default 4); storage stays serial.
+Alternatives considered: (i) leave the 15% content gap, since the missing text is
+"only" equations and captions; (ii) enable GROBID's `consolidateHeader` for
+venue; (iii) parallelise writes as well as parses.
+Reasoning on (1): the gap was measured, not assumed — comparing both parsers on
+five papers showed GROBID returning 83-88% of PyMuPDF's characters, and sampling
+the difference showed real body prose among the junk. The cause was structural:
+equations are `<formula>` *siblings* of `<p>`, so a `<p>`-only walk drops every
+equation and leaves the prose around it ("The received signal is given by ...
+where n is Gaussian noise") referring to nothing. Captions were dropped entirely,
+and in this literature a caption routinely carries the result itself ("BLEU score
+versus SNR under AWGN"). Recovery: 83-88% to 88-96% of PyMuPDF's characters, and
+paragraphs in the database from 3,798 to 4,891.
+The residual gap is now mostly PyMuPDF being *worse*: it fails to join ligature
+breaks, so "de nition" and "cant performance" count as text GROBID "dropped" when
+GROBID has the correct form. The rest is author lists, IEEE footers and diagram
+labels, all of which should be dropped.
+Captions are marked `figure_caption` rather than merged into body prose. Figure
+*understanding* is a non-goal and remains one — the image is never looked at —
+but caption text is text. Keeping the distinction means a later phase can exclude
+captions from generation context if they turn out to invite claims about images
+we cannot see, without re-ingesting.
+On (2): `consolidateHeader` calls an external service per paper, which is slow,
+network-dependent, and would make ingestion non-reproducible offline. The
+heuristic reaches 36% coverage, up from 0%. That is a weak number and is reported
+as one; a miss is `not_reported`, which the schema treats as a first-class value.
+On (3): parsing is I/O-bound — an HTTP round trip to GROBID plus PyMuPDF, whose C
+extension releases the GIL — so threads overlap genuinely. 692s to 252s over 42
+papers, a 2.7x speedup, putting 100 papers at roughly 10 minutes against
+Definition of Done #7's 20-minute budget. (iii) is rejected: parallel writes would
+need a connection pool and would break the per-paper commit that makes an
+interrupted run lose at most one paper. The bottleneck was never the writes.
+Evidence: 58 tests pass; all Phase 1 exit criteria still met after the changes.
+Reversible? Yes. `--workers 1` restores serial ingestion; caption and note
+sections are identifiable by `kind` and can be filtered out downstream.
