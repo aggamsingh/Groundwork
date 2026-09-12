@@ -51,6 +51,21 @@ def _normalise(text: str) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", text.lower())
 
 
+def _norm_doi(doi: str) -> str:
+    return doi.lower().strip().rstrip(".")
+
+
+def _norm_arxiv(value: str) -> str:
+    """Reduce arXiv identifiers to the bare number.
+
+    GROBID returns "arXiv:2108.09119v3[cs.CL]"; a reference may say
+    "arXiv:2108.09119" or just "2108.09119". Version suffixes and category tags
+    are not identity -- v2 and v3 of a paper are the same paper here.
+    """
+    m = re.search(r"(\d{4}\.\d{4,5})", value)
+    return m.group(1) if m else value.lower().strip()
+
+
 def normalised_phrase(text: str) -> str:
     """Whitespace-collapsed, accent-stripped, lowercase — for substring matching."""
     return " ".join(_normalise(text).split())
@@ -153,47 +168,70 @@ def resolve(
 
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, external_id, title, doi FROM papers "
+            "SELECT id, external_id, title, doi, arxiv_id FROM papers "
             "WHERE corpus_id = %s AND ingest_status = 'ok'",
             (corpus_id,),
         )
         papers = cur.fetchall()
 
     by_doi: dict[str, int] = {}
+    by_arxiv: dict[str, int] = {}
+    by_exact_title: dict[str, int] = {}
     by_title: list[tuple[int, str]] = []
-    for paper_id, _ext, title, doi in papers:
+    for paper_id, _ext, title, doi, arxiv_id in papers:
         if doi:
-            by_doi[doi.lower().rstrip(".")] = paper_id
+            by_doi[_norm_doi(doi)] = paper_id
+        if arxiv_id:
+            by_arxiv[_norm_arxiv(arxiv_id)] = paper_id
         if title:
             by_title.append((paper_id, title))
+            by_exact_title[normalised_phrase(title)] = paper_id
 
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT e.id, e.src_paper_id, e.raw_reference FROM citation_edges e "
+            "SELECT e.id, e.src_paper_id, e.raw_reference, e.ref_title, e.ref_doi, "
+            "e.ref_arxiv_id FROM citation_edges e "
             "JOIN papers p ON p.id = e.src_paper_id "
-            "WHERE p.corpus_id = %s AND e.dst_paper_id IS NULL "
-            "AND e.raw_reference IS NOT NULL",
+            "WHERE p.corpus_id = %s AND e.dst_paper_id IS NULL",
             (corpus_id,),
         )
         edges = cur.fetchall()
 
     updates: list[tuple[int, str, int]] = []
-    for edge_id, src_id, raw in edges:
+    for edge_id, src_id, raw, ref_title, ref_doi, ref_arxiv in edges:
         stats.total += 1
         dst: int | None = None
         how = ""
+        raw = raw or ""
 
-        if m := _DOI.search(raw):
-            dst = by_doi.get(m.group(0).lower().rstrip("."))
+        # Identity first. A parser that returns structured references (GROBID)
+        # makes this exact rather than approximate, which is most of why it was
+        # worth depending on a service at all (D-014).
+        if ref_doi:
+            dst = by_doi.get(_norm_doi(ref_doi))
             how = "doi"
+        if dst is None and ref_arxiv:
+            dst = by_arxiv.get(_norm_arxiv(ref_arxiv))
+            how = "arxiv" if dst is not None else how
+        if dst is None and ref_title:
+            dst = by_exact_title.get(normalised_phrase(ref_title))
+            how = "title" if dst is not None else how
 
+        # Then identifiers scraped out of the raw string, for parsers that give
+        # no structured fields.
+        if dst is None and (m := _DOI.search(raw)):
+            dst = by_doi.get(_norm_doi(m.group(0)))
+            how = "doi" if dst is not None else how
         if dst is None and (m := _ARXIV.search(raw)):
-            # arXiv ids are not stored on papers yet; left for when the parser
-            # records them. Counted so the gap is visible rather than assumed shut.
-            pass
+            dst = by_arxiv.get(_norm_arxiv(m.group(1)))
+            how = "arxiv" if dst is not None else how
 
         if dst is None:
-            matches = [pid for pid, title in by_title if title_in_reference(title, raw)]
+            # Last resort: does a corpus title appear verbatim in the reference?
+            haystack = ref_title or raw
+            matches = [
+                pid for pid, title in by_title if title_in_reference(title, haystack)
+            ]
             # An ambiguous reference matching two corpus titles is not resolved.
             # One paper's title being a prefix of another's is rare but real, and
             # guessing between them would put a wrong edge into the graph that
@@ -217,6 +255,8 @@ def resolve(
         updates.append((dst, how, edge_id))
         if how == "doi":
             stats.by_doi += 1
+        elif how == "arxiv":
+            stats.by_arxiv += 1
         elif how == "title":
             stats.by_title += 1
 

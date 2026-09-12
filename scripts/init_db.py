@@ -66,6 +66,10 @@ MIGRATIONS = [
     "ALTER TABLE papers ADD COLUMN IF NOT EXISTS doi text",
     "ALTER TABLE papers ADD COLUMN IF NOT EXISTS arxiv_id text",
     "CREATE INDEX IF NOT EXISTS papers_doi_idx ON papers (doi)",
+    # Structured reference fields — GROBID supplies these; the baseline does not.
+    "ALTER TABLE citation_edges ADD COLUMN IF NOT EXISTS ref_title text",
+    "ALTER TABLE citation_edges ADD COLUMN IF NOT EXISTS ref_doi text",
+    "ALTER TABLE citation_edges ADD COLUMN IF NOT EXISTS ref_arxiv_id text",
 ]
 
 

@@ -112,9 +112,10 @@ def _write_structure(
         for ref in paper.references:
             cur.execute(
                 "INSERT INTO citation_edges "
-                "(src_paper_id, dst_paper_id, raw_reference, dst_external_id) "
-                "VALUES (%s, NULL, %s, NULL)",
-                (paper_id, ref.raw),
+                "(src_paper_id, dst_paper_id, raw_reference, ref_title, ref_doi, "
+                "ref_arxiv_id, dst_external_id) "
+                "VALUES (%s, NULL, %s, %s, %s, %s, NULL)",
+                (paper_id, ref.raw, ref.title, ref.doi, ref.arxiv_id),
             )
 
 
@@ -151,7 +152,7 @@ def store(
             _clear_structure(conn, paper_id)
             cur.execute(
                 "UPDATE papers SET title=%s, abstract=%s, year=%s, venue=%s, "
-                "page_count=%s, doi=%s, source_path=%s, sha256=%s, parser=%s, "
+                "page_count=%s, doi=%s, arxiv_id=%s, source_path=%s, sha256=%s, parser=%s, "
                 "parsed_at=now(), ingest_status='ok', failure_reason=NULL "
                 "WHERE id=%s",
                 (
@@ -161,6 +162,7 @@ def store(
                     paper.venue,
                     paper.page_count,
                     paper.doi,
+                    paper.arxiv_id,
                     source_path,
                     sha256,
                     paper.parser,
@@ -171,9 +173,9 @@ def store(
         else:
             cur.execute(
                 "INSERT INTO papers (corpus_id, external_id, title, abstract, year, "
-                "venue, page_count, doi, source_path, sha256, parser, parsed_at, "
-                "ingest_status) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), 'ok') RETURNING id",
+                "venue, page_count, doi, arxiv_id, source_path, sha256, parser, "
+                "parsed_at, ingest_status) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), 'ok') RETURNING id",
                 (
                     corpus_id,
                     paper.external_id,
@@ -183,6 +185,7 @@ def store(
                     paper.venue,
                     paper.page_count,
                     paper.doi,
+                    paper.arxiv_id,
                     source_path,
                     sha256,
                     paper.parser,

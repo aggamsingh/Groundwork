@@ -128,6 +128,12 @@ CREATE TABLE citation_edges (
     src_paper_id   bigint NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
     dst_paper_id   bigint REFERENCES papers(id) ON DELETE CASCADE,  -- NULL = outside corpus
     raw_reference  text,                       -- the reference string as parsed
+    -- Structured fields, when the parser supplies them (GROBID does, the
+    -- PyMuPDF baseline does not). These make resolution identity-based rather
+    -- than phrase-matched -- see P-003 for why that distinction matters.
+    ref_title      text,
+    ref_doi        text,
+    ref_arxiv_id   text,
     dst_external_id text,                      -- resolved id when known
     context_paragraph_id bigint REFERENCES paragraphs(id) ON DELETE SET NULL
 );

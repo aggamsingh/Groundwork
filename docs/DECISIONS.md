@@ -498,3 +498,32 @@ are.
 Cost: the hybrid parses each paper with both engines when GROBID finds no year,
 so it is slower than either. Acceptable for a corpus of this size, run rarely.
 Reversible? Yes — three parsers are registered and selectable with `--parser`.
+
+## D-015 — Structured reference fields are stored and resolution is identity-first
+Date: 2026-09-13
+Phase: 1
+Decision: `citation_edges` gains `ref_title`, `ref_doi`, `ref_arxiv_id`, and
+`papers` gains `arxiv_id`. Resolution tries identities first — reference DOI,
+then arXiv id, then exact normalised title — and falls back to phrase matching
+only for parsers that supply no structured fields.
+Alternatives considered: (i) keep storing `raw_reference` alone and continue
+phrase-matching, as before; (ii) store the structured fields but keep matching on
+the raw string.
+Reasoning: this was a miss, caught by a regression rather than by design. The
+first hybrid ingest dropped resolved edges from 101 to 20, because GROBID's
+`raw_reference` is a re-serialisation of TEI fields and reads differently from the
+baseline's raw text, so phrase matching found less. The deeper problem was that
+the whole justification for depending on a GROBID container (D-014) is that it
+returns each reference's title and DOI *as fields* — and `store.py` was throwing
+those fields away and then approximately recovering them from a string. A DOI
+match is an identity; a phrase match is an inference that P-003 showed can be
+wrong one time in three.
+(i) is what produced the regression. (ii) keeps the same weakness while paying
+the storage cost.
+arXiv normalisation strips version suffixes and category tags: GROBID returns
+"arXiv:2108.09119v3[cs.CL]" where a reference may carry "arXiv:2108.09119".
+v2 and v3 of a paper are the same paper for this purpose.
+Evidence: to be recorded after the re-ingest completes. The number to watch is
+resolved edges, which should exceed the 101 the phrase matcher managed, with
+precision at least as good because identity matches cannot be coincidental.
+Reversible? Yes — additive columns and an extra matching stage.
