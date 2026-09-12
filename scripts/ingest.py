@@ -67,6 +67,16 @@ def main() -> int:
         for i, row in enumerate(rows, 1):
             ext_id = row["external_id"]
             path = CORPUS / row["filename"]
+            # Skip before parsing, not after. The manifest already carries the
+            # content hash, so an unchanged paper costs a single query instead of
+            # ~17s of parsing.
+            if not args.force and store.is_unchanged(
+                conn, ext_id, row["sha256"], args.parser, corpus_id=args.corpus
+            ):
+                counts["unchanged"] += 1
+                print(f"  [{i:>3}/{len(rows)}] {'unchanged':<11} {ext_id[:60]}")
+                continue
+
             try:
                 paper = parse(path, ext_id)
                 result = store.store(
@@ -108,7 +118,8 @@ def main() -> int:
         conn.commit()
         print(
             f"\ncitations: {stats.resolved}/{stats.total} resolved "
-            f"({stats.by_doi} by doi, {stats.by_title} by title), "
+            f"({stats.by_doi} by doi, {stats.by_arxiv} by arxiv, "
+            f"{stats.by_title} by title), "
             f"{stats.unresolved} point outside the corpus"
         )
         if stats.self_citations_dropped:

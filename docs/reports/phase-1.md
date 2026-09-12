@@ -9,8 +9,8 @@
 | 42 papers ingested (120 amended by C-001) | met | 42/42 `ok`, 0 quarantined |
 | <5% hard parse failures | met | 0% |
 | Failures inspectable | met | `ingest_status` + `failure_reason` queryable in SQL |
-| Tables preserved as tables | met | 48 tables, header kept separate from body |
-| Re-running ingestion is idempotent | met | second run reports 42 `unchanged` |
+| Tables preserved as tables | met | 47 tables, header kept separate from body |
+| Re-running ingestion is idempotent | met | second run: 42 `unchanged` in **3.8s** |
 
 Verified by `scripts/phase1_exit_check.py` rather than by eye — a criterion
 confirmed by looking at output is confirmed once, by someone who wanted it to pass.
@@ -66,8 +66,8 @@ parsed twice. See C-005 for why that matters later.
 | papers | 42 (`ok`), 0 quarantined |
 | sections | 978 |
 | paragraphs | 3,798 |
-| tables | 48 |
-| citation edges | 3,161 |
+| tables | 47 across 18 papers |
+| citation edges | 3,161 stored, **123 resolved in-corpus** (7 doi, 21 arXiv, 95 title) |
 | abstracts | 41/42 (98%) — was 7/42 (17%) on the baseline |
 | years | 42/42 |
 | DOIs | 29/42 |
@@ -98,6 +98,15 @@ scored on token overlap will have the same blind spot on this corpus.
 (P-001 Docker, P-004 GROBID). Both times the fix was seconds away once `docker
 ps -a` and `docker logs` were actually run. This is now written down as a pattern
 rather than two unrelated incidents.
+
+**The exit check caught a criterion I had written wrong.** It flagged 3 of 48
+tables as structurally thin. Two turned out to be genuine captioned tables with a
+header and one data row — the criterion demanding two body rows was measuring the
+wrong thing. The third was diagram debris. Had I only tightened the extractor, I
+would have discarded real tables; had I only relaxed the criterion, I would have
+kept the debris. Inspecting the three rather than picking a side is what
+separated them, and the discriminator — every genuine single-row table here is
+captioned, the debris is not — was only visible by looking.
 
 **Adding a better parser made a downstream number worse.** The hybrid improved
 every parsing metric and dropped resolved citations from 101 to 20, because
@@ -130,10 +139,12 @@ baseline.
 
 1. **The corpus must reach ~120 papers before the baseline is measured** (C-001).
    This is a hard Phase 2 entry gate, not a preference.
-2. **Ingestion is too slow for the target corpus size** (C-005). At ~17s per
-   paper, 100 papers is ~28 minutes against Definition of Done #7's 20-minute
-   budget. Parallelism or the deferred queue is needed before that criterion can
-   be claimed.
+2. **Ingestion is too slow for the target corpus size** (C-005). A full run is
+   ~16s per paper, so 100 papers is ~28 minutes against Definition of Done #7's
+   20-minute budget. Re-runs are now near-instant (unchanged papers are skipped
+   before parsing, 42 papers in 3.8s), but that does not help a first ingest,
+   which is what the criterion measures. Parallelism or the deferred queue is
+   needed before it can be claimed.
 3. `venue` extraction is broken in both parsers and needs fixing before it is
    used as a comparison-table column.
 4. Paragraph counts dropped from 5,121 (baseline) to 3,798 (hybrid). GROBID

@@ -119,6 +119,25 @@ def _write_structure(
             )
 
 
+def is_unchanged(
+    conn: psycopg.Connection,
+    external_id: str,
+    sha256: str,
+    parser: str,
+    *,
+    corpus_id: str = "semcom",
+) -> bool:
+    """Can this paper be skipped without parsing it?
+
+    The same predicate `store` applies, asked before the expensive step. Parsing
+    is ~17s per paper with the hybrid, so without this a no-change run costs 12
+    minutes to discover it had nothing to do — which makes the idempotency
+    guarantee true but useless in practice.
+    """
+    row = _existing(conn, corpus_id, external_id)
+    return bool(row and row[1] == sha256 and row[2] == parser and row[3] == "ok")
+
+
 def store(
     conn: psycopg.Connection,
     paper: ParsedPaper,

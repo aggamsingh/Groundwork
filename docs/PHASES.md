@@ -11,8 +11,8 @@ A phase moves to `COMPLETE` only when every exit criterion is met and
 | Phase | Title | Days | Status |
 |---|---|---|---|
 | 0 | Scope lock and skeleton | 1 | **COMPLETE** (2026-09-13) |
-| 1 | Ingestion and corpus store | 2–4 | IN PROGRESS |
-| 2 | Naive baseline and eval harness | 5–7 | NOT STARTED |
+| 1 | Ingestion and corpus store | 2–4 | **COMPLETE** (2026-09-13) |
+| 2 | Naive baseline and eval harness | 5–7 | BLOCKED ON HUMAN |
 | 3 | Retrieval upgrades, measured one at a time | 8–12 | NOT STARTED |
 | 4 | Groundedness and abstention | 13–15 | NOT STARTED |
 | 5 | Per-corpus adaptation | 16–20 | NOT STARTED |
@@ -60,7 +60,8 @@ entry gate.
 
 ## Phase 1 — Ingestion and corpus store
 
-**Status:** IN PROGRESS — started 2026-09-13.
+**Status:** COMPLETE — 2026-09-13. Report: `docs/reports/phase-1.md`.
+All exit criteria verified by `scripts/phase1_exit_check.py`.
 
 **Carried in from Phase 0** (see `docs/reports/phase-0.md`): `year` must come from
 parsed text, not PDF creation dates. DOIs go in a separate column; `external_id`
@@ -86,8 +87,8 @@ comparison, so the bake-off is measured against something rather than debated.
 | 1.7 | Citation edges: 3,391 stored, 101 resolved to corpus papers (precision-first, P-003) | COMPLETE |
 | 1.8 | Resumable pipeline: per-paper commit, progress, quarantine. **No async queue** (C-005) | COMPLETE |
 | 1.9 | Full hybrid run over 42 papers, 0 quarantined | COMPLETE |
-| 1.10 | Corpus-growth reminder to the user (~120 papers) | NOT STARTED |
-| 1.11 | `scripts/phase1_exit_check.py` + `docs/reports/phase-1.md` | IN PROGRESS |
+| 1.10 | Corpus-growth reminder delivered to the user at phase close | COMPLETE |
+| 1.11 | `scripts/phase1_exit_check.py` + `docs/reports/phase-1.md` | COMPLETE |
 
 **~~The 21% problem~~ — retracted 2026-09-13.** The naive decoder failed on 11 of
 42, but PyMuPDF reads all 42 cleanly. The finding measured my throwaway
