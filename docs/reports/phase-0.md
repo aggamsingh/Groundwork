@@ -86,10 +86,14 @@ to measure. The first number in this project is the Phase 2 baseline.
 
 ## Carried into Phase 1
 
-1. **6 of 28 dev PDFs are not text-extractable** by a naive stream decoder —
-   embedded font encodings. This is a concrete requirement for the parser
-   bake-off, not an incidental annoyance: a parser that fails on 21% of the
-   corpus fails the phase.
+1. ~~**6 of 28 dev PDFs are not text-extractable**~~ — **CORRECTED 2026-09-13,
+   first thing in Phase 1.** Re-measured across all 42 papers, the naive stream
+   decoder failed on 11 (26%). But PyMuPDF reads **all 42 cleanly**, including
+   every one of the 11. The finding was a property of my throwaway extractor,
+   not of the corpus, and it should never have been written up as a corpus
+   property on that evidence. It is not a bake-off requirement. Kept visible
+   rather than deleted, because the mistake is the useful part: a negative
+   result from a deliberately crude tool says nothing about proper ones.
 2. `year` must come from parsed documents, never PDF creation dates — several
    are download dates (one 2013 paper reports 2024).
 3. `survey-mini` is decidable from page count, which the parser has for free.

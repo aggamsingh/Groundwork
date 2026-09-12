@@ -11,7 +11,7 @@ A phase moves to `COMPLETE` only when every exit criterion is met and
 | Phase | Title | Days | Status |
 |---|---|---|---|
 | 0 | Scope lock and skeleton | 1 | **COMPLETE** (2026-09-13) |
-| 1 | Ingestion and corpus store | 2–4 | READY TO START |
+| 1 | Ingestion and corpus store | 2–4 | IN PROGRESS |
 | 2 | Naive baseline and eval harness | 5–7 | NOT STARTED |
 | 3 | Retrieval upgrades, measured one at a time | 8–12 | NOT STARTED |
 | 4 | Groundedness and abstention | 13–15 | NOT STARTED |
@@ -60,19 +60,38 @@ entry gate.
 
 ## Phase 1 — Ingestion and corpus store
 
-**Status:** READY TO START — Phase 0 closed 2026-09-13, CHECKPOINT 1 cleared.
-No outstanding gates. Awaiting the user's go-ahead.
+**Status:** IN PROGRESS — started 2026-09-13.
 
-**Carried in from Phase 0** (see `docs/reports/phase-0.md`): 6 of 28 dev PDFs are
-not text-extractable by a naive decoder — a hard requirement for the parser
-bake-off, not an annoyance. `year` must come from parsed text, not PDF creation
-dates. DOIs go in a separate column; `external_id` stays the slug (D-005).
+**Carried in from Phase 0** (see `docs/reports/phase-0.md`): `year` must come from
+parsed text, not PDF creation dates. DOIs go in a separate column; `external_id`
+stays the slug (D-005). The "unreadable PDFs" finding was retracted — see above.
 
 **Exit criteria:** all 42 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.
 
-Task list to be planned when Phase 0 closes. Per the working agreement, later phases
-are not planned in advance.
+### Tasks
+
+Baseline first: the simplest ingest that runs end to end lands before any parser
+comparison, so the bake-off is measured against something rather than debated.
+
+| # | Task | Status |
+|---|---|---|
+| 1.1 | Parser candidates chosen and justified (D-012) | COMPLETE |
+| 1.2a | PyMuPDF parser + quality report over 42 papers (0% failures) | COMPLETE |
+| 1.2b | Persist parsed output to Postgres | IN PROGRESS |
+| 1.3 | Ingest is idempotent (re-run changes nothing) + per-paper quarantine on failure | NOT STARTED |
+| 1.4 | GROBID service in docker-compose; adapter to the same storage interface | NOT STARTED |
+| 1.5 | Bake-off harness: both parsers over 20 papers, scored, winner recorded | NOT STARTED |
+| 1.6 | Table extraction — tables preserved as tables, header hierarchy intact | NOT STARTED |
+| 1.7 | Citation edges into `citation_edges`, resolved to corpus papers where possible | NOT STARTED |
+| 1.8 | Async job pipeline: queue, progress, resumable | NOT STARTED |
+| 1.9 | Full run over 42 papers; failures inspectable | NOT STARTED |
+| 1.10 | Corpus-growth reminder to the user (~120 papers) | NOT STARTED |
+| 1.11 | Exit check + `docs/reports/phase-1.md` | NOT STARTED |
+
+**~~The 21% problem~~ — retracted 2026-09-13.** The naive decoder failed on 11 of
+42, but PyMuPDF reads all 42 cleanly. The finding measured my throwaway
+extractor, not the corpus. No parser requirement follows from it.
 
 ### ⚠ Reminder owed at Phase 1 close — grow the corpus to ~120 papers
 

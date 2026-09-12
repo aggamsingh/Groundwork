@@ -374,3 +374,41 @@ do anyway.
 Evidence: the user's controlled-vocabulary table, supplied 2026-09-13.
 Reversible? Yes -- still `draft` and the user's to rewrite. But it should be
 frozen before extraction runs, since the claim store keys off these fields.
+
+## D-012 — PyMuPDF as the Phase 1 baseline parser; GROBID is the challenger
+Date: 2026-09-13
+Phase: 1
+Decision: PyMuPDF is implemented first as the baseline parser, with GROBID added
+as the challenger in task 1.4 and the two compared in 1.5. Both emit the same
+`ParsedPaper` dataclasses, so the bake-off compares parsers rather than storage
+code and a parser swap cannot change the database shape.
+Alternatives considered: (i) start with GROBID, per spec §4 which names it first;
+(ii) start with a modern layout parser (Docling/Marker); (iii) compare all three.
+Reasoning: CLAUDE.md requires the simplest thing that runs end to end before the
+sophisticated one, and GROBID is a Java service in a container whose failure
+modes are its own. Standing it up first would mean debugging a service before
+knowing what good output looks like on this corpus. PyMuPDF is a library call,
+runs in 0.5s per paper, and produced measurable baseline numbers within an hour.
+Those numbers are now the thing GROBID has to beat, which is the whole point --
+without them the bake-off is two unmeasured options and an argument.
+(iii) is deferred, not rejected: a third parser is worth adding only if GROBID
+fails to clear the baseline decisively.
+Evidence: baseline over all 42 papers, 2026-09-13 --
+  hard failures 0/42 (0%)      |  plausible title 42/42 (100%)
+  year 42/42 (100%)            |  >=1 reference 42/42 (100%)
+  >=3 sections 42/42 (100%)    |  doi 29/42 (69%)
+  abstract 7/42 (17%)          |  tables 0/42 (0%)
+  median 68 paragraphs, 39,872 chars, 32 references, 0.50s/paper
+The two weak numbers are the informative ones. Abstract detection at 17% is a
+genuine baseline weakness: this corpus splits between papers with an `Abstract`
+heading and IEEE-style papers running it inline as `Abstract--`, and the inline
+fallback only catches some. Tables at 0% is not a weakness but an absence --
+PyMuPDF sees text runs, not cells, and no table extraction was attempted. Both
+are squarely what GROBID plus a dedicated table extractor exist for, so the
+bake-off has two clear targets rather than a vague hope of improvement.
+Note on the metrics themselves: they are proxies, not correctness. Nobody has
+hand-labelled the true title of 42 papers, so "plausible title" checks shape, not
+accuracy. They are valid for comparing parsers on one corpus, which is what a
+bake-off needs, and no stronger claim is made for them.
+Reversible? Yes. If GROBID wins, PyMuPDF stays as the fallback for papers GROBID
+cannot parse, since 0% hard failures is worth keeping.
