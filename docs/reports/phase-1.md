@@ -45,6 +45,9 @@ Both parsers over the same 20 papers. The hybrid column is the adopted default.
 | median chars | 34,513 | **34,513** | 42,170 |
 | median seconds | 2.64 | **12.52** | 6.76 |
 
+Measured before the improvements in D-016. The hybrid's per-paper cost is
+unchanged, but a full corpus run is now ~6s per paper wall-clock with 4 workers.
+
 GROBID cannot extract tables at all — the CRF image has no table model — and
 "tables preserved as tables" is an exit criterion, so a GROBID-only pipeline
 could not have closed this phase. PyMuPDF alone gives up structured references,
@@ -64,8 +67,8 @@ parsed twice. See C-005 for why that matters later.
 | | |
 |---|---|
 | papers | 42 (`ok`), 0 quarantined |
-| sections | 978 |
-| paragraphs | 3,798 |
+| sections | 1,049 |
+| paragraphs | 4,891 |
 | tables | 47 across 18 papers |
 | citation edges | 3,161 stored, **123 resolved in-corpus** (7 doi, 21 arXiv, 95 title) |
 | abstracts | 41/42 (98%) — was 7/42 (17%) on the baseline |
@@ -139,18 +142,24 @@ baseline.
 
 1. **The corpus must reach ~120 papers before the baseline is measured** (C-001).
    This is a hard Phase 2 entry gate, not a preference.
-2. **Ingestion is too slow for the target corpus size** (C-005). A full run is
-   ~16s per paper, so 100 papers is ~28 minutes against Definition of Done #7's
-   20-minute budget. Re-runs are now near-instant (unchanged papers are skipped
-   before parsing, 42 papers in 3.8s), but that does not help a first ingest,
-   which is what the criterion measures. Parallelism or the deferred queue is
-   needed before it can be claimed.
-3. `venue` extraction is broken in both parsers and needs fixing before it is
-   used as a comparison-table column.
-4. Paragraph counts dropped from 5,121 (baseline) to 3,798 (hybrid). GROBID
-   filters running headers and figure captions the baseline swept in — likely an
-   improvement in quality, but it is unverified and worth a spot check before
-   chunking decisions are made on top of it.
-5. Table extraction is precision-tuned at 43% coverage. If Phase 2 numeric
-   questions turn out to need the missing tables, that trade is the first thing
-   to revisit.
+2. ~~**Ingestion is too slow**~~ — **resolved (D-016).** Parsing now runs in a
+   thread pool: 692s to 252s over 42 papers, about 6s per paper, so 100 papers is
+   ~10 minutes against Definition of Done #7's 20-minute budget. Re-runs skip
+   unchanged papers before parsing (42 in 3.8s). The async queue remains unbuilt
+   (C-005) and is still the right answer if ingestion ever needs to survive a
+   crash mid-run or report progress to a UI.
+3. ~~`venue` extraction is broken~~ — **now 36% (D-016)**, via a page-1 header
+   heuristic. GROBID supplies none without `consolidateHeader`, which calls an
+   external service per paper. 36% is weak; a miss is `not_reported`.
+4. ~~Paragraph counts dropped~~ — **investigated and fixed (D-016).** The drop
+   was real content loss, not filtering: equations are `<formula>` siblings of
+   `<p>` and a `<p>`-only walk dropped every one of them, along with all figure
+   captions. Paragraphs are now 4,891. Settled before any chunking decision was
+   built on top of it, which was the point of flagging it.
+5. Table extraction stays at 43% coverage. A whitespace-based detector was tried
+   post-close and **reverted** (D-017): it reached 81% of papers and produced
+   page-sized grids of running headers and chopped prose. Ground truth from
+   caption counting says ~126 tables exist in 35 of 42 papers, so roughly half
+   are still missed. If Phase 2 numeric questions need them, the answer is a
+   dedicated table model — the full GROBID image or Docling — not another
+   heuristic over the same detector.

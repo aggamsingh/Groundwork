@@ -572,3 +572,44 @@ interrupted run lose at most one paper. The bottleneck was never the writes.
 Evidence: 58 tests pass; all Phase 1 exit criteria still met after the changes.
 Reversible? Yes. `--workers 1` restores serial ingestion; caption and note
 sections are identifiable by `kind` and can be filtered out downstream.
+
+## D-017 — Whitespace table detection tried and REVERTED (negative result)
+Date: 2026-09-13
+Phase: 1 (post-close improvements)
+Decision: Table detection stays on PyMuPDF's line-based strategy at 18/42 papers
+(43%). The whitespace-based ("text") strategy, anchored on captions, was
+implemented, measured, inspected and reverted.
+What was tried: counting "TABLE n" captions across the corpus gave an independent
+estimate of ground truth — 35 of 42 papers contain at least one, roughly 126
+tables. Against that, the line strategy finds tables in 18 papers and the text
+strategy in all 42, but the text strategy reports 677 candidates. Gating it on a
+nearby caption cut that to 118 tables across 33 papers, almost exactly the
+caption-derived estimate. On those numbers the change looked clearly correct, and
+coverage in the full pipeline came out at 34/42 (81%).
+Why it was reverted: the contents were unusable. Sampling papers that previously
+had no tables showed page-sized grids rather than tables — a 58x2 "Table I" whose
+header was `['erase channel an', 'TABLE I']`, a 47x8 whose header was
+`['2666', '', '', 'IEEE JOURNAL', 'ON SELECTED', 'AREAS IN COMM']`, rows holding
+body prose chopped across columns ('level of commun' | 'ication' | 'problem: the
+eff'). The text strategy segments the whole page into a grid; the caption anchor
+fired because a real caption happened to fall inside the search band, not because
+the detected region was a table.
+This is worse than missing the tables. Per D-013, a missed table is visible as an
+absence and its text is still in the paragraphs; a false table enters the claim
+store looking exactly like a real one. These would have fed running headers and
+prose fragments into numeric extraction.
+Evidence: 34/42 papers with >=1 table after, 18/42 after reverting. Contents
+inspected on four papers that had none before; all four were page grids.
+Lesson, and it is the second time this phase: the aggregate looked right and the
+content was wrong. 118 detected against ~126 expected is exactly the number a
+working implementation would produce. P-003 had the same shape — a plausible
+resolution rate hiding a third of links pointing at the wrong paper. Checking a
+count is not checking a result.
+What would actually work, for whoever revisits this: the caption gives the
+table's location to within a caption band, so the region could be bounded by the
+caption plus whitespace analysis *within that region only*, rather than
+segmenting the page and hoping a caption lands nearby. Alternatively a dedicated
+table model — the full GROBID image, or Docling — which is what the spec's
+"dedicated table extractor" meant.
+Reversible? Already reverted. The rejected approach is described above in enough
+detail to avoid re-deriving it.
