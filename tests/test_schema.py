@@ -98,15 +98,53 @@ class TestStructuralValidation(SchemaTestCase):
             load_schema("semcom", self.dir)
 
 
-class TestShippedDraft(unittest.TestCase):
-    """The draft in schema/ must stay unusable until the user freezes it."""
+class TestShippedSchema(unittest.TestCase):
+    """The real schema/semcom.yaml, frozen 2026-09-13 (CHECKPOINT 2).
 
-    def test_repo_schema_is_still_a_draft_and_refuses_to_load(self) -> None:
-        repo_schema = Path(__file__).resolve().parents[1] / "schema"
-        if not (repo_schema / "semcom.yaml").exists():
+    Until it was frozen this asserted the opposite — that the draft refused to
+    load. Inverted on the freeze rather than deleted, so the repo schema stays
+    covered either way.
+    """
+
+    def setUp(self) -> None:
+        self.dir = Path(__file__).resolve().parents[1] / "schema"
+        if not (self.dir / "semcom.yaml").exists():
             self.skipTest("no schema/semcom.yaml in repo")
-        with self.assertRaises(SchemaNotFrozenError):
-            load_schema("semcom", repo_schema)
+        self.schema = load_schema("semcom", self.dir)
+
+    def test_is_frozen_and_loads(self) -> None:
+        self.assertEqual(str(self.schema["frozen_date"]), "2026-09-13")
+
+    def test_carries_the_users_screening_vocabulary(self) -> None:
+        # These come from the user's own review notes (D-011). If one silently
+        # disappears, the gold table and the extractor stop sharing a vocabulary.
+        for name in (
+            "type",
+            "modality",
+            "encoder",
+            "channel",
+            "transmission",
+            "ch_aware_train",
+            "metric_validated",
+            "failure_mode",
+        ):
+            self.assertIn(name, field_names(self.schema))
+
+    def test_editorial_columns_are_not_extraction_fields(self) -> None:
+        # verdict/status are the user's judgements about their own argument.
+        # Scoring extraction on them would depress every accuracy number.
+        names = field_names(self.schema)
+        self.assertNotIn("verdict", names)
+        self.assertNotIn("status", names)
+        self.assertIn("verdict", self.schema["human_only_columns"])
+
+    def test_metric_validated_is_critical_and_strictly_gated(self) -> None:
+        field = next(
+            f for f in self.schema["fields"] if f["name"] == "metric_validated"
+        )
+        self.assertEqual(field.get("priority"), "critical")
+        thresholds = self.schema["abstention_thresholds"]
+        self.assertGreater(thresholds["metric_validated"], thresholds["default"])
 
 
 if __name__ == "__main__":

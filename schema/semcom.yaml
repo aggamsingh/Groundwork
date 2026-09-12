@@ -1,9 +1,11 @@
 # Extraction schema — semantic communication corpus
 #
-# CHECKPOINT 2. DRAFT for the user to edit; the frozen version is theirs.
-# Nothing loads this while status is `draft` — load_schema() refuses it.
+# CHECKPOINT 2 — FROZEN 2026-09-13.
 #
-# To freeze:  set status: frozen, set frozen_date, then say so.
+# The vocabulary is the user's; they approved this file on 2026-09-13 and it was
+# stamped frozen on that approval. Changing it now requires an entry in
+# docs/CHANGELOG.md, because the claim store and the gold table both key off
+# these field names and value sets.
 #
 # PROVENANCE: the controlled vocabulary below is the user's own, taken from their
 # review notes (2026-09-13), not inferred by Claude. It replaces the taxonomy
@@ -14,8 +16,8 @@
 # it is a screening matrix rather than a results table.
 
 corpus: semcom
-status: draft            # draft | frozen  -- must be `frozen` to be usable
-frozen_date: null        # YYYY-MM-DD, set when you freeze
+status: frozen           # frozen 2026-09-13 on the user's approval
+frozen_date: 2026-09-13
 schema_version: 2        # v1 was Claude-induced and is superseded
 
 # ---------------------------------------------------------------------------

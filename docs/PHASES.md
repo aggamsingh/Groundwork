@@ -10,8 +10,8 @@ A phase moves to `COMPLETE` only when every exit criterion is met and
 
 | Phase | Title | Days | Status |
 |---|---|---|---|
-| 0 | Scope lock and skeleton | 1 | IN PROGRESS |
-| 1 | Ingestion and corpus store | 2–4 | NOT STARTED |
+| 0 | Scope lock and skeleton | 1 | **COMPLETE** (2026-09-13) |
+| 1 | Ingestion and corpus store | 2–4 | READY TO START |
 | 2 | Naive baseline and eval harness | 5–7 | NOT STARTED |
 | 3 | Retrieval upgrades, measured one at a time | 8–12 | NOT STARTED |
 | 4 | Groundedness and abstention | 13–15 | NOT STARTED |
@@ -23,7 +23,8 @@ A phase moves to `COMPLETE` only when every exit criterion is met and
 
 ## Phase 0 — Scope lock and skeleton
 
-**Status:** IN PROGRESS (started 2026-09-09)
+**Status:** COMPLETE — opened 2026-09-09, closed 2026-09-13.
+Report: `docs/reports/phase-0.md`.
 
 **Exit criteria (amended by C-003):** holdout split committed and untouchable;
 schema frozen; `docker compose up` works. The gold table moved to a Phase 2
@@ -33,15 +34,15 @@ entry gate.
 |---|---|---|---|
 | 0.1 | `CLAUDE.md` + four docs logs | COMPLETE | — |
 | 0.2 | `pyproject.toml` (uv), `.gitignore`, `.env.example`, package skeleton — **verified: uv.lock resolves on Python 3.11.9, 23 tests pass, ruff clean** | COMPLETE | — |
-| 0.3 | `docker-compose.yml` + `scripts/check_env.py` preflight — Docker/uv/py3.11 installed; **blocked on WSL install + reboot (P-001)** | IN PROGRESS | P-001 |
-| 0.4 | `db/schema.sql`: papers, sections, paragraphs, tables, citation_edges, corpus_split, `v_dev_papers` | COMPLETE (unverified until 0.3 runs) | — |
+| 0.3 | `docker compose up` verified: Postgres 16, pgvector 0.8.6, 7 tables, view queryable | COMPLETE | — |
+| 0.4 | `db/schema.sql` — applied and verified against live Postgres | COMPLETE | — |
 | 0.5 | Seed corpus: 42 unique papers copied, `corpus/manifest.csv` committed (50 files → 42, see D-006/D-007) | COMPLETE | — |
 | 0.6a | Holdout split — **FROZEN 2026-09-09**, 14 holdout / 28 dev, chosen by the user | COMPLETE | — |
 | 0.6b | CI leak guard `survey.evalharness.holdout` + 12 unit tests, loading the frozen split | COMPLETE | — |
-| 0.7 | `schema/semcom.yaml` — **draft written 2026-09-09**, awaiting user edit + freeze | **BLOCKED ON HUMAN** | **CHECKPOINT 2** |
+| 0.7 | `schema/semcom.yaml` v2 — **FROZEN 2026-09-13** on the user's vocabulary (D-011) | COMPLETE | — |
 | ~~0.8~~ | Gold table — **deferred to a Phase 2 entry gate (C-003)**. Not a Phase 0 blocker. | DEFERRED | — |
 | 0.9 | DECISIONS D-001, D-002, D-003, D-004 all written 2026-09-09 | COMPLETE | — |
-| 0.10 | Exit check + `docs/reports/phase-0.md` | NOT STARTED | 0.3, 0.7 |
+| 0.10 | Exit check + `docs/reports/phase-0.md` | COMPLETE | — |
 
 ### Open questions blocking Phase 0
 
@@ -59,9 +60,13 @@ entry gate.
 
 ## Phase 1 — Ingestion and corpus store
 
-**Status:** NOT STARTED — **CHECKPOINT 1 cleared 2026-09-09** (holdout frozen).
-Gated on Phase 0 exit: tasks 0.3 (Docker) and 0.7 (schema freeze) remain.
-The gold table no longer blocks this phase (C-003).
+**Status:** READY TO START — Phase 0 closed 2026-09-13, CHECKPOINT 1 cleared.
+No outstanding gates. Awaiting the user's go-ahead.
+
+**Carried in from Phase 0** (see `docs/reports/phase-0.md`): 6 of 28 dev PDFs are
+not text-extractable by a naive decoder — a hard requirement for the parser
+bake-off, not an annoyance. `year` must come from parsed text, not PDF creation
+dates. DOIs go in a separate column; `external_id` stays the slug (D-005).
 
 **Exit criteria:** all 42 seeded papers ingested (was 120 — see C-001), <5% hard parse failures, failures inspectable,
 tables preserved as tables, re-running ingestion is idempotent.
