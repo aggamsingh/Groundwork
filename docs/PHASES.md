@@ -80,8 +80,8 @@ comparison, so the bake-off is measured against something rather than debated.
 | 1.2a | PyMuPDF parser + quality report over 42 papers (0% failures) | COMPLETE |
 | 1.2b | Persist parsed output to Postgres — 42 papers, 849 sections, 5,121 paragraphs | COMPLETE |
 | 1.3 | Idempotent re-run (42 unchanged) + quarantine, retryable (P-002) | COMPLETE |
-| 1.4 | GROBID service in docker-compose; adapter to the same storage interface | NOT STARTED |
-| 1.5 | Bake-off harness: both parsers over 20 papers, scored, winner recorded | NOT STARTED |
+| 1.4 | GROBID in docker-compose (bakeoff profile) + TEI adapter (P-004 to start it) | COMPLETE |
+| 1.5 | Bake-off over 20 papers — no winner; hybrid adopted (D-014, C-004) | COMPLETE |
 | 1.6 | Table extraction — 18/42 papers (43%), header kept separate from body (D-013) | COMPLETE (baseline) |
 | 1.7 | Citation edges: 3,391 stored, 101 resolved to corpus papers (precision-first, P-003) | COMPLETE |
 | 1.8 | Async job pipeline: queue, progress, resumable | NOT STARTED |

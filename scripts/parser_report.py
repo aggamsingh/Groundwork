@@ -18,10 +18,14 @@ import sys
 import time
 from pathlib import Path
 
-from survey.ingest import pymupdf_parser
+from survey.ingest import grobid_parser, hybrid_parser, pymupdf_parser
 from survey.ingest.model import ParseError
 
-PARSERS = {"pymupdf": pymupdf_parser.parse}
+PARSERS = {
+    "pymupdf": pymupdf_parser.parse,
+    "grobid": grobid_parser.parse,
+    "hybrid": hybrid_parser.parse,
+}
 
 CORPUS = Path("corpus")
 
@@ -34,17 +38,93 @@ def _looks_like_title(title: str | None) -> bool:
     return 3 <= len(words) <= 30 and 15 <= len(title) <= 250 and not title.endswith(".")
 
 
+def _run(parse, rows: list[dict]) -> tuple[list, list, list[float]]:
+    ok, failed, durations = [], [], []
+    for r in rows:
+        started = time.perf_counter()
+        try:
+            paper = parse(CORPUS / r["filename"], r["external_id"])
+        except ParseError as exc:
+            failed.append((r["external_id"], str(exc)))
+            continue
+        except Exception as exc:  # a crash is a parser defect, not a bad PDF
+            failed.append((r["external_id"], f"UNEXPECTED {type(exc).__name__}: {exc}"))
+            continue
+        durations.append(time.perf_counter() - started)
+        ok.append(paper)
+    return ok, failed, durations
+
+
+def _metrics(ok: list, failed: list, durations: list[float], total: int) -> dict:
+    if not ok:
+        return {"hard failures": f"{len(failed)}/{total}"}
+    n = len(ok)
+
+    def pct(count: int) -> str:
+        return f"{count}/{n} ({count / n:.0%})"
+
+    return {
+        "hard failures": f"{len(failed)}/{total} ({len(failed) / total:.0%})",
+        "plausible title": pct(sum(_looks_like_title(p.title) for p in ok)),
+        "abstract": pct(sum(bool(p.abstract) for p in ok)),
+        "year": pct(sum(p.year is not None for p in ok)),
+        "doi": pct(sum(bool(p.doi) for p in ok)),
+        "venue": pct(sum(bool(p.venue) for p in ok)),
+        ">=1 reference": pct(sum(len(p.references) > 0 for p in ok)),
+        "structured refs": pct(sum(any(r.title for r in p.references) for p in ok)),
+        ">=3 sections": pct(sum(len(p.sections) >= 3 for p in ok)),
+        ">=1 table": pct(sum(len(p.tables) > 0 for p in ok)),
+        "median paragraphs": f"{statistics.median(p.paragraph_count for p in ok):.0f}",
+        "median chars": f"{statistics.median(p.char_count for p in ok):,.0f}",
+        "median references": f"{statistics.median(len(p.references) for p in ok):.0f}",
+        "median seconds": f"{statistics.median(durations):.2f}",
+        "total seconds": f"{sum(durations):.0f}",
+    }
+
+
+def compare(rows: list[dict]) -> int:
+    """Run every parser over the same papers and print a side-by-side table."""
+    results = {}
+    for name, parse in sorted(PARSERS.items()):
+        print(f"running {name} over {len(rows)} papers...", flush=True)
+        ok, failed, durations = _run(parse, rows)
+        results[name] = (_metrics(ok, failed, durations, len(rows)), failed)
+
+    names = sorted(results)
+    width = max(len(k) for m, _ in results.values() for k in m)
+    print(f"\n{'metric':<{width}}  " + "  ".join(f"{n:>18}" for n in names))
+    print("-" * (width + 2 + 20 * len(names)))
+    for key in results[names[0]][0]:
+        row = "  ".join(f"{results[n][0].get(key, '-'):>18}" for n in names)
+        print(f"{key:<{width}}  {row}")
+
+    for name in names:
+        failures = results[name][1]
+        if failures:
+            print(f"\n{name} failures ({len(failures)}):")
+            for ext_id, why in failures:
+                print(f"  {ext_id[:60]:<60} {why[:70]}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--parser", default="pymupdf", choices=sorted(PARSERS))
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument(
+        "--compare", action="store_true", help="run all parsers side by side"
+    )
     args = ap.parse_args()
 
-    parse = PARSERS[args.parser]
     rows = list(csv.DictReader((CORPUS / "manifest.csv").open(encoding="utf-8")))
     rows.sort(key=lambda r: r["external_id"])
     if args.limit:
         rows = rows[: args.limit]
+
+    if args.compare:
+        return compare(rows)
+
+    parse = PARSERS[args.parser]
 
     ok, failed = [], []
     durations = []

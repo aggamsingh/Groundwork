@@ -21,16 +21,19 @@ from pathlib import Path
 import psycopg
 
 from survey.evalharness.holdout import load_holdout_ids
-from survey.ingest import citations, pymupdf_parser, store
+from survey.ingest import citations, hybrid_parser, pymupdf_parser, store
 from survey.ingest.model import ParseError
 
-PARSERS = {"pymupdf": pymupdf_parser.parse}
+PARSERS = {
+    "hybrid": hybrid_parser.parse,
+    "pymupdf": pymupdf_parser.parse,
+}
 CORPUS = Path("corpus")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--parser", default="pymupdf", choices=sorted(PARSERS))
+    ap.add_argument("--parser", default="hybrid", choices=sorted(PARSERS))
     ap.add_argument("--corpus", default="semcom")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--force", action="store_true", help="re-parse unchanged papers")

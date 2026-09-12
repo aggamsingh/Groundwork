@@ -94,3 +94,23 @@ Impact:
     blocking". It is NOT downgraded in importance and is still human-only.
   - Phase 0's exit criteria are amended to: holdout frozen, schema frozen,
     `docker compose up` verified. Gold table removed from that list.
+
+## C-004 — Parser bake-off records a hybrid, not a winner
+Date: 2026-09-13
+Original plan: spec §5 Phase 1 — "Parser bake-off on 20 papers, winner recorded."
+Change: no single winner is recorded. GROBID and PyMuPDF each win decisively on
+different criteria, and the default parser combines them (D-014).
+Trigger: the measurement. GROBID takes abstracts 100% vs 15% and structured
+references 100% vs 0%; PyMuPDF takes tables 40% vs 0% and year 100% vs 35%.
+Impact:
+  - "Tables preserved as tables" is a Phase 1 exit criterion, so a GROBID-only
+    pipeline could not have closed the phase regardless of its other strengths.
+  - The pipeline now depends on a running GROBID container for its best output,
+    where previously it depended only on a library. Mitigated by a real fallback:
+    if GROBID is unreachable the parse degrades to PyMuPDF rather than failing.
+  - Ingestion is slower, since papers where GROBID reports no year are parsed
+    twice.
+  - The spec's expectation of a single winner was reasonable and simply did not
+    survive contact with the corpus. Recording "hybrid" is the honest result; a
+    declared winner would have meant discarding a measured advantage to satisfy
+    the shape of the plan.

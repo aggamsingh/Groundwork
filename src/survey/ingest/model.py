@@ -61,6 +61,7 @@ class ParsedPaper:
     year: int | None = None
     venue: str | None = None
     doi: str | None = None
+    arxiv_id: str | None = None
     page_count: int | None = None
     sections: list[ParsedSection] = field(default_factory=list)
     tables: list[ParsedTable] = field(default_factory=list)

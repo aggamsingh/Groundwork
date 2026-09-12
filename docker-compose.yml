@@ -20,5 +20,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # Challenger parser for the Phase 1 bake-off (D-012). The CRF-only image is
+  # used rather than the full deep-learning one: it is ~300MB instead of several
+  # GB, needs no GPU, and the bake-off is about structure extraction, not the
+  # marginal accuracy of GROBID's optional neural models.
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: survey_grobid
+    ports:
+      - "${GROBID_PORT:-8070}:8070"
+    environment:
+      # -XX:-UseContainerSupport is required, not tuning. GROBID 0.8.0's JDK
+      # probes cgroups at startup and NPEs on Docker Desktop's WSL2 backend
+      # ("Cannot invoke CgroupInfo.getMountPoint() because anyController is
+      # null"), so the container exits before serving anything. Disabling
+      # container-awareness skips that probe; -Xmx then has to be explicit,
+      # since the JVM can no longer read the container's memory limit. See P-004.
+      JAVA_OPTS: "-XX:-UseContainerSupport -Xmx2g"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8070/api/isalive || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    profiles: ["bakeoff"]      # not started by a plain `docker compose up`
+
 volumes:
   pgdata:

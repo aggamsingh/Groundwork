@@ -451,3 +451,50 @@ challenger parser rather than a vague hope of improvement.
 Cost: parse time rose from 0.50s to 4.36s per paper. Acceptable — 3 minutes for
 the corpus, run rarely.
 Reversible? Yes; thresholds are constants in one module.
+
+## D-014 — Parser bake-off: no winner, hybrid adopted
+Date: 2026-09-13
+Phase: 1
+Decision: Neither parser wins. The default becomes a hybrid — GROBID for header,
+abstract, sections and structured references; PyMuPDF for tables and for the
+publication year when GROBID reports none; PyMuPDF alone as a whole-paper
+fallback when GROBID is unreachable or fails.
+Alternatives considered: (i) declare GROBID the winner and accept no tables;
+(ii) declare PyMuPDF the winner and accept 15% abstract coverage; (iii) add a
+third parser (Docling/Marker) and try again for an outright winner.
+Evidence: both parsers over the same first 20 papers, 2026-09-13 --
+
+  metric              grobid      pymupdf
+  hard failures       0/20 (0%)   0/20 (0%)
+  plausible title     19/20 (95%) 20/20 (100%)
+  abstract            20/20 (100%) 3/20 (15%)
+  year                7/20 (35%)  20/20 (100%)
+  doi                 15/20 (75%) 15/20 (75%)
+  >=1 reference       20/20 (100%) 20/20 (100%)
+  structured refs     20/20 (100%) 0/20 (0%)
+  >=3 sections        20/20 (100%) 20/20 (100%)
+  >=1 table           0/20 (0%)   8/20 (40%)
+  median chars        34,513      42,170
+  median seconds      2.28        6.53
+
+Reasoning: (i) is disqualified by an exit criterion, not by preference — "tables
+preserved as tables" is required to close Phase 1, and the CRF GROBID image has
+no table model at all, so its 0% is structural rather than a tuning gap.
+(ii) gives up structured references, which matters beyond Phase 1: P-003 showed
+title-phrase matching resolves only 101 of 3,391 edges, while GROBID returns each
+reference's title and DOI as fields, making resolution identity-based. The
+citation graph is what Phase 5 mines for reranker training pairs.
+The year difference is a difference in purpose, not quality. GROBID reports a date
+only when it can attribute one, which is correct for a bibliographic tool; we
+would rather have the year printed on the page than a null, which is what
+PyMuPDF's cruder rule gives. So the fallback fills a gap and never overrides.
+(iii) is deferred. A third parser would be worth adding if the hybrid still fell
+short of the exit criteria; it does not.
+Note the two places the comparison is weaker than it looks: `venue` is 0% for both
+parsers, which means my extraction is wrong rather than that the data is absent,
+and `plausible title` measures shape, not correctness. Neither changes the
+decision, and both are recorded so the numbers are not read as stronger than they
+are.
+Cost: the hybrid parses each paper with both engines when GROBID finds no year,
+so it is slower than either. Acceptable for a corpus of this size, run rarely.
+Reversible? Yes — three parsers are registered and selectable with `--parser`.
