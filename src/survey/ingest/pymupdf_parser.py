@@ -28,6 +28,7 @@ from survey.ingest.model import (
     ParsedSection,
     ParseError,
 )
+from survey.ingest.tables import extract_tables
 
 PARSER_NAME = "pymupdf"
 
@@ -180,6 +181,7 @@ def parse(path: Path, external_id: str) -> ParsedPaper:
         )
 
         paper.title = _guess_title(lines)
+        paper.tables = extract_tables(doc)
 
         sections: list[ParsedSection] = []
         current = ParsedSection(heading=None, ordinal=0, depth=0, kind="frontmatter")

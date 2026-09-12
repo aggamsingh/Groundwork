@@ -412,3 +412,42 @@ accuracy. They are valid for comparing parsers on one corpus, which is what a
 bake-off needs, and no stronger claim is made for them.
 Reversible? Yes. If GROBID wins, PyMuPDF stays as the fallback for papers GROBID
 cannot parse, since 0% hard failures is worth keeping.
+
+## D-013 — Table extraction tuned for precision, not recall
+Date: 2026-09-13
+Phase: 1
+Decision: `survey.ingest.tables` filters PyMuPDF's detector aggressively: a
+candidate is rejected unless it has >=2 rows, >=2 columns, >=50% non-empty cells,
+and <=34% wholly empty columns, with a small-and-sparse rule to catch diagram
+debris. Header row is stored separately from body rows in the `grid` jsonb.
+Result: 18/42 papers (43%) have >=1 table, up from 0%.
+Alternatives considered: (i) store every detected candidate and filter later;
+(ii) accept only tables with a "TABLE N" caption; (iii) skip tables in the
+baseline and wait for a dedicated extractor.
+Reasoning: the detector fires on figure legends and boxed diagrams as well as
+tables — inspection showed 2-row "tables" holding fragments of a diagram label
+('UT', 'Transfo', 'rmer') split across nine mostly-empty columns. The asymmetry
+decides the tuning: a missed table is visible as an absence, and the text is
+still in the paragraphs, so a question about it can still be answered or abstained
+on. A false table is invisible as an error — it enters the claim store looking
+exactly like a real one, and numbers read out of a mis-detected grid are
+fabricated rather than merely missing. Under (i) that debris reaches the claim
+store and every downstream number inherits it.
+(ii) was tempting and rejected: caption matching is precise but this corpus has
+unlabelled tables, and requiring a caption discards real data for tidiness.
+(iii) contradicts baseline-first — 43% measured beats 0% and an intention.
+Header hierarchy is kept because flattening it is precisely the spec's own P-004
+example: BLEU values attributed to the wrong SNR because a multi-row header was
+flattened and the column-to-condition mapping was lost.
+Evidence: over 42 papers, 18 with >=1 table, captions resolved on every sampled
+table. Spot-check confirmed real tables with correct headers, including BVCS
+Table I whose header is `[BLEU1, BLEU2, BLEU3, BLEU4, BERT Score]` — the exact
+case D-010 anticipated, where treating "BLEU" as one metric would manufacture
+contradictions between papers that agree.
+Known limitation, now with evidence: PyMuPDF flattens multi-level headers. The
+Attention paper's Table 3 header arrives as a single cell `train N d d h`,
+which is the P-004 failure in miniature. This is a concrete target for the
+challenger parser rather than a vague hope of improvement.
+Cost: parse time rose from 0.50s to 4.36s per paper. Acceptable — 3 minutes for
+the corpus, run rarely.
+Reversible? Yes; thresholds are constants in one module.
