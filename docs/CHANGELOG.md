@@ -48,3 +48,26 @@ Impact:
     holdout being frozen first and never extended.
 Reminder owed: the user asked to be reminded after Phase 1 to reach ~120 papers.
 Tracked as task 1.x in docs/PHASES.md and as a Phase 2 entry gate.
+
+## C-002 — Gold table is a 10-paper hand-built subset, not a survey export
+Date: 2026-09-13
+Original plan: spec §5 Phase 0 freezes `eval/gold_table_semcom.csv` exported from
+the user's existing survey, treating it as an artifact that already exists.
+Change: the survey has not been written yet. The gold table instead comes from
+the user's paper-review notes, which currently cover ~10 of the 42 papers, and is
+frozen at that size for now rather than waiting for all 42.
+Trigger: user confirmed on 2026-09-13 that the survey is not yet started but that
+a review matrix with a controlled vocabulary exists for ~10 papers.
+Impact:
+  - Phase 0 can close on a 10-row gold table instead of blocking indefinitely.
+  - Numeric extraction accuracy (Definition of Done #5) is measured on ~10 papers
+    and MUST be reported with that sample size attached. It is a weaker claim
+    than the spec assumed and should not be quoted as a flat percentage.
+  - The gold table grows as the user reviews more papers. Rows added later are
+    appended; existing rows are not revised to match system output -- that would
+    destroy the artifact's independence.
+  - Constraint: gold table rows must come from the DEVELOPMENT set only. A gold
+    row for a holdout paper would mean tuning against the holdout, which is the
+    contamination the split exists to prevent. To be checked when the rows land.
+  - The schema (CHECKPOINT 2) is now derived from the same notes, so schema and
+    gold table share a vocabulary by construction rather than by coincidence.

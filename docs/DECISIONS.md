@@ -327,3 +327,50 @@ contradiction view fires.
 Reversible? The tolerances are config and cheap to retune. The two new record
 fields are not — they are part of the claim store's primary key, so adding them
 after extraction runs would mean re-extracting the corpus.
+
+## D-011 — User's review vocabulary replaces the Claude-induced taxonomy
+Date: 2026-09-13
+Phase: 0
+Decision: `schema/semcom.yaml` is rewritten (schema_version 2) around the
+controlled vocabulary from the user's own review notes: type, modality, encoder,
+channel, transmission, ch_aware_train, metric_validated, failure_mode. The
+taxonomy Claude induced from abstracts on 2026-09-09 (D-009: modality +
+contribution_type + semantic_noise_model) is superseded. `verdict` and `status`
+are moved OUT of the extraction fields into `human_only_columns`.
+Alternatives considered: (i) keep the induced taxonomy and treat the notes as a
+second, parallel vocabulary; (ii) merge the two enum-by-enum; (iii) adopt the
+notes wholesale and drop the quantitative fields Claude added.
+Reasoning: the user has read these papers; the induction had only abstracts, and
+six of the 28 dev PDFs were not even text-extractable. On the evidence the user's
+vocabulary is simply better, and it carries four axes the induction missed
+entirely -- encoder provenance (scratch / frozen-pt / finetuned-pt / LLM),
+transmission (analog / scalar-quant / vector-quant), channel-aware training, and
+failure mode. Each is a comparability axis: two BLEU curves from a
+channel-aware-trained model and a channel-agnostic one are not the same
+measurement. (i) is the worst option -- two vocabularies for one concept
+guarantees drift between what is extracted and what the gold table records,
+and the gold table is the thing being measured against. (ii) was attempted and
+abandoned: the user's `type` and the induced `contribution_type` overlap but cut
+differently, and a merged enum would have been neither.
+(iii) is rejected because the notes table is a *screening matrix* -- one row per
+paper, for triage -- and cannot hold per-condition numeric results. Spec §1
+requires numeric extraction, comparison tables and contradiction surfacing, so
+reported_values / snr_range / metrics / the contradiction rules are retained
+alongside the user's columns.
+Separating verdict and status is the other substantive change. They are the
+user's editorial judgements about their own argument ("we argue with it"), not
+properties of the papers. Leaving them among the extraction fields would mean
+scoring the system on something no extraction system can produce, which would
+depress every accuracy number for no reason and mask real failures.
+`metric_validated` is marked priority: critical, with a strict 0.85 abstention
+threshold and its own separately reported accuracy. The user states it is the
+spine of the survey's Section IV; it is also the hardest field to extract, since
+papers rarely state it and it must be inferred from whether a correlation or
+human study was run. Averaging it into a headline accuracy over ten easy enums
+would hide failure exactly where it matters most. The asymmetry justifies the
+strict threshold: a wrong `yes` propagates into the survey's central argument,
+while a `not_extracted` only sends the user to read the paper -- which they would
+do anyway.
+Evidence: the user's controlled-vocabulary table, supplied 2026-09-13.
+Reversible? Yes -- still `draft` and the user's to rewrite. But it should be
+frozen before extraction runs, since the claim store keys off these fields.
