@@ -629,3 +629,38 @@ anything today. A third heuristic over the same geometric signal would be a thir
 negative result, not a fix.
 Reversible? Already reverted. Both rejected approaches are described above in
 enough detail to avoid re-deriving them.
+
+## D-018 — CI runs tests, lint and artifact guards now; the eval gate waits
+Date: 2026-09-13
+Phase: 1 (post-close)
+Decision: `.github/workflows/ci.yml` runs three jobs on push and PR — unit tests
+plus lint, database-backed integration tests against a pgvector service, and a
+`check_artifacts.py` guard over the project's frozen artifacts. The eval
+regression gate that spec §5 Phase 6 requires is deliberately NOT included.
+Alternatives considered: (i) wait for Phase 6 and build all of CI at once;
+(ii) include a placeholder eval job that always passes.
+Reasoning: the eval gate cannot exist yet — there is no eval, and there will not
+be one until the Phase 2 baseline. But the corpus is about to roughly triple, and
+the work most likely to break something quietly is exactly what is about to
+happen: papers added, manifest rebuilt, ingestion re-run. Tests and guards that
+run on every push are worth having before that, not after.
+(ii) is rejected outright. A green check that tests nothing is worse than no
+check, because it reads as coverage.
+What `check_artifacts.py` protects, and why each matters: the holdout file must
+exist and still carry its FROZEN marker (a regenerated file would look identical
+to an edited one); every holdout paper must still be in the manifest (if one
+disappears the split silently shrinks and Phase 6's number is computed on fewer
+papers than it claims); the schema must still be frozen, must still keep
+`verdict`/`status` out of `fields` (D-011 — extraction would be scored on
+judgements no system can produce), and must still mark `metric_validated` as
+critical; and the gold table, once it exists, must contain no holdout paper.
+That last one is the reason the guard was written now rather than later: the gold
+table is the next artifact the user produces, its rows come from their review
+notes, and nothing stops a holdout paper appearing in those notes. Catching it at
+commit time costs nothing; catching it in Phase 6 means the holdout was tuned
+against for weeks.
+The guards were verified by breaking things deliberately: a gold table containing
+a holdout paper, and a schema flipped back to draft. Both failed the check with a
+specific message; the repo returns clean afterwards. A guard never seen to fail
+is only decoration.
+Reversible? Yes, it is CI configuration.

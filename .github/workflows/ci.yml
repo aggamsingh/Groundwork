@@ -1,0 +1,104 @@
+name: CI
+
+# Tests, lint, and the artifact guards. The eval-regression gate that spec §5
+# Phase 6 requires is NOT here yet — there is no eval to gate on until the
+# Phase 2 baseline exists. This workflow is the scaffolding that gate will hang
+# off, and everything in it runs today.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Tests
+        # Integration tests skip themselves when Postgres is absent, so the unit
+        # suite runs here without standing up a database. The database-backed
+        # tests run in the `integration` job below.
+        run: uv run python -m pytest -q
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: survey
+          POSTGRES_PASSWORD: survey_local_dev
+          POSTGRES_DB: survey
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U survey -d survey"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Apply schema
+        run: uv run python scripts/init_db.py
+
+      - name: Tests with database
+        run: uv run python -m pytest -q
+
+  guards:
+    # These check the project's own invariants rather than its code. They are
+    # cheap, and each one protects an artifact that cannot be regenerated if it
+    # is quietly corrupted.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Frozen artifacts are loadable and frozen
+        run: uv run python scripts/check_artifacts.py
+
+      - name: No PDFs or secrets committed
+        run: |
+          if git ls-files | grep -Ei '\.pdf$|(^|/)\.env$'; then
+            echo "::error::PDFs or .env must not be committed"
+            exit 1
+          fi
+          echo "clean"
