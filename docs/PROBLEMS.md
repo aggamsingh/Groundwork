@@ -171,3 +171,33 @@ this look like a slow start rather than a crash — `docker ps -a` and
 The pattern repeats P-001 exactly: a service that will not answer was assumed to
 be starting slowly, when it had already died. Check whether the process is alive
 before waiting on it.
+
+## P-005 — corpus/provenance.json was never committed, despite a commit saying so
+Date: 2026-09-13
+Phase: 1 (post-close)
+Symptom: found while writing `scripts/add_papers.py`. `git ls-files corpus/`
+returned only `.gitkeep` and `manifest.csv`. The Phase 0 commit message states
+"corpus/provenance.json: which source file(s) each id came from", and D-006 and
+D-007 both cite that file as the reason their dedupe decisions are reversible.
+The file existed on disk and had never entered the repository.
+First hypothesis (WRONG): the file was committed and later removed by some
+cleanup. There was no such commit; it was never added in the first place.
+Actual cause: `.gitignore` carries `corpus/**` with explicit re-includes for
+`manifest.csv` and `.gitkeep` only. `git add -A` therefore skipped
+`provenance.json` silently — as designed, since the rule exists to keep PDFs out.
+Nothing failed, nothing warned, and the commit message asserted otherwise.
+Consequence had it gone unnoticed: two decisions describe themselves as
+reversible on the strength of a file stored on exactly one machine, with no
+backup and no history. Losing it would not have been noticed either, because
+nothing reads it during normal operation — it would have been discovered only at
+the moment someone needed to reverse a dedupe decision, which is the moment it is
+least recoverable.
+Fix: `.gitignore` re-includes `corpus/provenance.json` and the new
+`corpus/excluded.csv`. Both are now tracked. The distinction the rule should
+encode is data versus decisions: the PDFs are data and stay out; the records of
+what was done to them are decisions and belong in history.
+Cost: ~10 minutes, all of it after the fact.
+Prevention: `scripts/check_artifacts.py` runs in CI over the frozen artifacts,
+and this class of error — a file the project depends on that no check reads —
+is exactly what it is for. A broader lesson for the commit log: a commit message
+naming a file is not evidence the file was committed. `git ls-files` is.

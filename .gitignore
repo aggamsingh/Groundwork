@@ -1,6 +1,10 @@
-# Corpus PDFs are never committed — only corpus/manifest.csv is.
+# Corpus PDFs are never committed. The records ABOUT the corpus are: they are
+# decisions, not data, and D-006/D-007 cite provenance.json as what makes those
+# dedupe choices reversible — which it cannot do while it lives on one machine.
 corpus/**
 !corpus/manifest.csv
+!corpus/provenance.json
+!corpus/excluded.csv
 !corpus/.gitkeep
 
 # Secrets

@@ -1,0 +1,2 @@
+sha256,was_named,reason,decision,date
+5be06844a6fdad57d96765e139bf54d144f40213256b399f0b8479ed4eb4275d,Semantic for future internet 2022.pdf,arXiv preprint of a paper already in the corpus in its published form (semantic-communications-for-future-internet-fundamentals-...). Keeping both would let one paper straddle the dev/holdout split.,D-007,2026-09-09

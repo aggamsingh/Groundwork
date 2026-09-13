@@ -664,3 +664,34 @@ a holdout paper, and a schema flipped back to draft. Both failed the check with 
 specific message; the repo returns clean afterwards. A guard never seen to fail
 is only decoration.
 Reversible? Yes, it is CI configuration.
+
+## D-019 — Deliberate exclusions are recorded in corpus/excluded.csv
+Date: 2026-09-13
+Phase: 1 (post-close)
+Decision: Papers removed from the corpus on purpose are recorded in
+`corpus/excluded.csv` by content hash, with the reason and the decision that
+removed them. `scripts/add_papers.py` skips any incoming file whose hash appears
+there.
+Alternatives considered: (i) rely on the near-duplicate title check to catch
+re-imports; (ii) rely on remembering.
+Reasoning: (i) was tried and demonstrably fails. The first dry run of
+`add_papers.py` against the original source folder proposed adding
+`Semantic for future internet 2022.pdf` — the arXiv preprint removed by D-007 —
+because the title check compares slug prefixes and the preprint's slug
+(`semantic-for-future-internet-2022`) shares no prefix with the published
+version's (`semantic-communications-for-future-internet-fundamentals-...`). The
+same removal would have been undone on every future import from that folder.
+The stakes are higher than tidiness, and higher now than when D-007 was made:
+new papers join the **dev** side (C-001). If the published version of that pair
+had been held out, re-adding the preprint would put the same content on both
+sides of the split — precisely the contamination D-007 existed to prevent, and
+invisible afterwards.
+(ii) is what the project already rejects everywhere else; a rule nothing enforces
+is a rule that erodes.
+`add_papers.py` also refuses outright — rather than skipping — when an incoming
+paper looks like a **holdout** paper, and exits non-zero. That case is not noise
+to be filtered past; it is contamination, and it should stop the import.
+Evidence: dry run against the original 50-file folder now reports 0 to add, 50
+skipped, 0 blocked — every file correctly recognised.
+Reversible? Yes; the file is a record and can be edited. Each row names the
+decision that put it there.
