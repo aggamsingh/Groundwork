@@ -605,11 +605,27 @@ content was wrong. 118 detected against ~126 expected is exactly the number a
 working implementation would produce. P-003 had the same shape — a plausible
 resolution rate hiding a third of links pointing at the wrong paper. Checking a
 count is not checking a result.
-What would actually work, for whoever revisits this: the caption gives the
-table's location to within a caption band, so the region could be bounded by the
-caption plus whitespace analysis *within that region only*, rather than
-segmenting the page and hoping a caption lands nearby. Alternatively a dedicated
-table model — the full GROBID image, or Docling — which is what the spec's
-"dedicated table extractor" meant.
-Reversible? Already reverted. The rejected approach is described above in enough
-detail to avoid re-deriving it.
+UPDATE 2026-09-13, same day: the suggestion below was tried and also failed.
+pdfplumber was added and tested two ways. With `lines` and mixed strategies it
+found *nothing* on the relevant pages — these IEEE tables have no ruled lines at
+all, which is why the line-based detector misses them. With the caption-bounded
+crop described below — locate the caption, crop to its column and the region
+under it, analyse alignment only inside the crop — the output was still prose:
+cells like 'in Table I. For', 'coding based on', because the anchor matched
+body-text *mentions* of "Table I" rather than the caption itself, and even where
+it found the real BVCS table the grid bled surrounding prose into cells.
+pdfplumber was removed again; no dependency was kept.
+Two generic tools have now failed the same way on two-column IEEE layouts, for
+the same reason: without ruling lines, column boundaries are genuinely ambiguous
+to a geometric heuristic, and a caption is not enough to disambiguate them.
+Conclusion: this needs a layout model (Docling, or GROBID's full deep-learning
+image), which is what the spec's "dedicated table extractor" meant. That is a
+heavy dependency — Docling pulls torch — and the choice interacts with the
+unanswered Q-B4 (GPU/VRAM), so it is left for the user to weigh in on rather than
+decided unilaterally. Not worth paying for until Phase 2's numeric questions show
+the missing tables actually block an answer.
+Stopping rule applied: two failed attempts at the same gap, neither blocking
+anything today. A third heuristic over the same geometric signal would be a third
+negative result, not a fix.
+Reversible? Already reverted. Both rejected approaches are described above in
+enough detail to avoid re-deriving them.
