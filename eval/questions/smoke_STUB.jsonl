@@ -1,0 +1,16 @@
+// STUB question set — plumbing only. NOT an eval set.
+//
+// Exists so the harness can be exercised end to end before CHECKPOINT 4 lands.
+// `load_questions` refuses any *_STUB file unless allow_stub=True, and the eval
+// runner never passes it, so nothing here can become a reported number.
+//
+// These questions were written to touch the machinery, not to measure quality:
+// the "answers" are not verified, the spans name papers without offsets, and the
+// selection is arbitrary. Every real question is written by the user, with
+// supporting spans, against papers they have read (D-002).
+{"id": "stub-1", "question": "deep learning enabled semantic communication systems", "type": "single_paper_lookup", "spans": [{"paper_external_id": "deep-learning-enabled-semantic-communication-systems", "quote": "unverified - stub"}], "notes": "STUB"}
+{"id": "stub-2", "question": "robust semantic communication driven by knowledge graph", "type": "single_paper_lookup", "spans": [{"paper_external_id": "robust-semantic-communication-driven-by-knowledge-graph", "quote": "unverified - stub"}], "notes": "STUB"}
+{"id": "stub-3", "question": "semantic communication with adaptive universal transformer", "type": "single_paper_lookup", "spans": [{"paper_external_id": "semcomadaptivetransformer", "quote": "unverified - stub"}], "notes": "STUB"}
+{"id": "stub-4", "question": "BLEU score sentence similarity semantic communication text", "type": "cross_paper_comparison", "spans": [{"paper_external_id": "deep-learning-enabled-semantic-communication-systems", "relevance": 1.0, "quote": "unverified - stub"}, {"paper_external_id": "semcomadaptivetransformer", "relevance": 0.5, "quote": "unverified - stub"}], "notes": "STUB"}
+{"id": "stub-5", "question": "attention is all you need transformer architecture", "type": "single_paper_lookup", "spans": [{"paper_external_id": "attention-is-all-you-need-paper-google", "quote": "unverified - stub"}], "notes": "STUB"}
+{"id": "stub-6", "question": "what is the airspeed velocity of an unladen swallow", "type": "unanswerable", "notes": "STUB - genuinely not in this corpus"}

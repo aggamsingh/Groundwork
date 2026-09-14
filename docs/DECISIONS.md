@@ -825,3 +825,52 @@ the third time: a count is not a result.
 Carried into Phase 3: if numeric questions depend on the affected tables, this
 becomes blocking and the layout model is the answer.
 Reversible? Yes; the baseline is one constant.
+
+## D-024 — Retrieval is scored at paper level, not chunk level
+Date: 2026-09-15
+Phase: 2 (machinery)
+Decision: The eval runner scores retrieval by which *papers* were retrieved, not
+which chunks. Several chunks from one paper count as one retrieved paper.
+Alternatives considered: (i) score on chunk ids; (ii) score on paragraph spans.
+Reasoning: (i) makes Phase 2 and Phase 3 numbers incomparable, which defeats the
+purpose of having a baseline. Chunk ids are a function of chunking configuration,
+and Phase 3 changes chunking eight times — a chunk id that was relevant under
+512-token flat chunks does not exist under section-aware chunking, so a recall
+figure computed on chunk ids cannot be compared across the two.
+(ii) is the right long-term metric and is finer than paper level, but it requires
+the user's supporting spans to be resolved to stored paragraph offsets, which
+cannot happen until the questions exist. It is left as a separate, later metric
+rather than blocking the harness.
+Paper level is also what the user's labels naturally provide: a span names a
+paper and a location in it, and the paper part is stable under every chunking
+change.
+Consequence recorded honestly: paper-level recall is a *coarser* measure than the
+system's real task. Retrieving the right paper but the wrong section counts as a
+hit here and would not satisfy a reader. When span-level scoring lands it will
+produce lower numbers than these, and that drop must not be read as a regression.
+De-duplication matters too: without it, five chunks from one paper would score as
+five retrieved papers and inflate precision.
+Reversible? Yes — the runner takes a retriever function and the scoring is one
+function; span-level scoring is additive.
+
+## D-025 — The eval runner refuses to report numbers from a stub set
+Date: 2026-09-15
+Phase: 2 (machinery)
+Decision: `eval/questions/smoke_STUB.jsonl` exercises the harness end to end.
+`load_questions` raises on any `*_STUB` path unless `allow_stub=True`, and the
+only caller that passes it is `run_eval.py --smoke`, which prints "retrieval
+executed" and explicitly no metrics.
+Reasoning: CLAUDE.md permits stubs for plumbing "only as `*_STUB` files with a
+check that fails any eval run touching them", and this is that check. The failure
+mode is specific and plausible: a stub set produces numbers, the numbers look
+reasonable, and they end up in a phase report. A number computed from six
+arbitrary questions is worse than no number, because it looks like a result.
+The stub's questions are deliberately degenerate — they restate paper titles, so
+retrieval trivially succeeds. That is fine for testing that the machinery runs
+and would be worthless as measurement, which is the distinction being enforced.
+Also validated at load time, because these are cheap to check and expensive to
+discover late: an answerable question with no spans is rejected (it would score
+recall 0.0 by construction and look like a retrieval failure rather than a
+labelling gap), and an unanswerable question WITH spans is rejected (the two
+statements contradict each other).
+Reversible? Yes, but it should not be.
