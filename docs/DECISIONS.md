@@ -727,3 +727,35 @@ rather than concurrently; noted here so it is a design constraint from the start
 rather than an out-of-memory error during an eval.
 Evidence: nvidia-smi, 2026-09-14.
 Reversible? The constraint is hardware. The choices made under it are not.
+
+## D-021 — Project moved to D:\Groundwork; caches redirected
+Date: 2026-09-14
+Phase: 2 (machinery)
+Decision: The repository lives at `D:\Groundwork`. pip and uv caches are
+redirected to `D:\caches\` via user environment variables. The venv was rebuilt
+in place rather than copied.
+Reasoning: C: reached 0 bytes free and took Docker Desktop down with it (P-007),
+and the recovery only bought back ~12 GB. D: has 216 GB. The corpus is about to
+roughly triple, and a local model stack is several gigabytes before any weights,
+so the binding constraint would have returned.
+Two details that mattered more than they look:
+  - The directory is still named `Groundwork`. Docker Compose derives volume
+    names from the project directory, so `groundwork_pgdata` — which holds the
+    entire ingested corpus — is only reused because the name is unchanged.
+    Moving to `D:\Survey` would have silently created an empty volume and the
+    42 ingested papers would have appeared to vanish.
+  - The venv was deleted and rebuilt, not moved. Virtualenvs hardcode absolute
+    paths; a copied one would have kept pointing at C: and failed in ways that
+    look like import errors rather than a bad move.
+Caches are the larger long-term saving: the pip cache alone had reached 3.78 GB
+on C:, and it regrows with every install.
+Not done, and left to the user: Docker Desktop's own disk image
+(`docker_data.vhdx`, currently ~4 GB and growing with every image) still lives
+under `C:\Users\aggam\AppData\Local\Docker`. Relocating it is a supported
+operation in Docker Desktop's own settings, which migrates the file properly. It
+is not worth doing by hand-editing config while that image holds the corpus
+volume, so it stays a three-click job for the user rather than a risk taken here.
+Verified after the move: 98 tests pass, ruff clean, artifact guards intact,
+Postgres back up with all 42 papers and 28 dev papers visible through
+`v_dev_papers`, and every Phase 1 exit criterion still met.
+Reversible? Yes, though it would mean rebuilding the venv again.
