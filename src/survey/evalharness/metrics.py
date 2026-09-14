@@ -1,4 +1,4 @@
-"""Retrieval and answer metrics — Phase 2 harness.
+﻿"""Retrieval and answer metrics â€” Phase 2 harness.
 
 Pure functions over (ranked results, relevant items). No corpus, no database, no
 model. That is deliberate: these are the instruments, and an instrument should be
@@ -21,7 +21,7 @@ def recall_at_k(retrieved: Sequence[str], relevant: Iterable[str], k: int) -> fl
     """Share of relevant items appearing in the top k.
 
     Returns 0.0 when nothing is relevant. That case means the question was
-    mislabelled — an answerable question with no supporting span — and scoring it
+    mislabelled â€” an answerable question with no supporting span â€” and scoring it
     as a perfect 1.0, which the "no relevant items" convention would give, hides
     a broken label behind a good number.
     """
@@ -78,7 +78,7 @@ def ndcg_at_k(
     is exactly the distinction a reranker is supposed to learn.
 
     The ideal ranking is computed over ALL known-relevant items, not only those
-    retrieved — otherwise a system that retrieves one relevant item and ranks it
+    retrieved â€” otherwise a system that retrieves one relevant item and ranks it
     first scores 1.0 while missing nine others.
     """
     if k <= 0 or not relevance:
@@ -104,7 +104,7 @@ def citation_faithfulness(entailed: Sequence[bool]) -> float:
     """Share of generated sentences whose cited span supports them.
 
     An answer with no sentences scores 0.0, not 1.0. A system that emits nothing
-    is not perfectly faithful — it is a refusal, and refusals are measured by
+    is not perfectly faithful â€” it is a refusal, and refusals are measured by
     abstention metrics, where they count properly.
     """
     if not entailed:
@@ -124,7 +124,7 @@ def abstention_recall(
     total = sum(1 for u in truly_unanswerable if u)
     if total == 0:
         return 0.0
-    correct = sum(1 for a, u in zip(abstained, truly_unanswerable) if u and a)
+    correct = sum(1 for a, u in zip(abstained, truly_unanswerable, strict=True) if u and a)
     return correct / total
 
 
@@ -143,7 +143,7 @@ def false_refusal_rate(
     answerable = sum(1 for u in truly_unanswerable if not u)
     if answerable == 0:
         return 0.0
-    refused = sum(1 for a, u in zip(abstained, truly_unanswerable) if not u and a)
+    refused = sum(1 for a, u in zip(abstained, truly_unanswerable, strict=True) if not u and a)
     return refused / answerable
 
 
