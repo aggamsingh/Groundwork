@@ -175,3 +175,23 @@ Impact:
     corpus-size agnostic and this will be re-verified after growth.
   - Phase 2's exit criteria are unchanged and still gated. This changes when
     machinery is written, not when the baseline is measured.
+
+## C-007 — Corpus reduced from 42 to 41 papers (holdout contamination)
+Date: 2026-09-15
+Original plan: the corpus was frozen at 42 unique papers (C-001), 28 dev / 14
+holdout.
+Change: 41 papers, 27 dev / 14 holdout. `a-robust-deep-learning-enabled-semantic-
+communication-system-for-text` removed from the dev side.
+Trigger: P-008 — it is the same paper as `r-deepsc-paper-...`, which the user held
+out. Identical title and identical opening paragraph; different bytes and
+unrelated filenames, so three prior dedupe passes all missed it.
+Impact:
+  - The dev set loses one paper. The holdout is untouched: the user's frozen
+    choice is not edited to correct a mistake on my side.
+  - No result is invalidated. Nothing has been tuned yet (C-006), so the
+    contamination never influenced a number. Had it survived to Phase 3 it would
+    have inflated every ablation delta and the Phase 6 holdout figure.
+  - Recorded in `corpus/excluded.csv` by content hash, so a future import cannot
+    restore it (D-019).
+  - The corpus-growth commitment to ~120 papers (C-001) is unchanged, and this
+    makes it slightly more pressing: the dev side is now 27.

@@ -275,3 +275,45 @@ that was already nearly full.
 Standing note for the project: the disk is the binding constraint on this
 machine, not just VRAM. A local model stack (torch plus model weights) is several
 gigabytes before any corpus growth, and the corpus is about to roughly triple.
+
+## P-008 — A held-out paper's content was in the dev set from Phase 0
+Date: 2026-09-15
+Phase: 2
+Symptom: a stress test comparing *parsed titles* across the corpus found two
+papers with identical normalised titles:
+  - `a-robust-deep-learning-enabled-semantic-communication-system-for-text` (dev)
+  - `r-deepsc-paper-literal-text-noise-vs-adversarial-physical-noise` (HOLDOUT)
+Confirmed the same paper: identical title, identical opening paragraph word for
+word, both 6 pages. Different sha256 (separate downloads — one carried a DOI in
+its metadata, the other did not) and completely unrelated filenames.
+First hypothesis (WRONG): a false positive from title normalisation being too
+aggressive — stripping punctuation and case could plausibly collapse two
+distinct papers with similar names. Checking the first paragraph of each ruled
+it out immediately; they are the same text.
+Actual cause: the user held out `r-deepsc-paper-...`, and the same paper was also
+present as `a-robust-deep-learning-...` in dev. Three dedupe passes had run over
+this corpus and none could see it:
+  - content hashing (D-006): bytes differ, so no match
+  - slug/filename similarity (D-007, D-019): the filenames share no words at all
+  - the "looks like an existing paper" check in add_papers.py: same weakness
+Nothing compared the *parsed titles*, because at Phase 0 the papers had not been
+parsed yet — the dedupe ran on filenames, which was all that existed then, and
+was never revisited once real titles were available.
+Consequence: from Phase 0 until now, holdout content sat on the dev side. Nothing
+had been tuned yet, so no result is retroactively invalid — the machinery built
+so far makes no tuning decisions (C-006), which is the only reason this is a near
+miss rather than an invalidated project. Had it survived to Phase 3, every
+ablation delta would have been measured on a dev set containing a holdout paper,
+and the Phase 6 "honest number" would have been quietly inflated.
+Fix: removed the dev copy, keeping the user's holdout choice untouched — their
+frozen file is not edited to resolve a mistake of mine. Recorded in
+`corpus/excluded.csv` by hash so no future import restores it (D-019). Corpus is
+now 41 papers, 27 dev / 14 holdout.
+Cost: ~40 minutes, most of it confirming the duplicate was real.
+Prevention: `scripts/check_artifacts.py` now compares parsed titles across the
+corpus on every CI run and reports whether a collision straddles the split.
+`scripts/stress_decisions.py` checks the same thing against the live database.
+The general lesson, and it is the fourth time this project has shown it: a check
+written against the evidence available at the time must be re-run when better
+evidence arrives. Filenames were all Phase 0 had; titles existed from Phase 1
+onward and nobody looked again.

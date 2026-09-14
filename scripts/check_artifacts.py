@@ -16,11 +16,63 @@ Usage:
 from __future__ import annotations
 
 import csv
+import re
 import sys
 from pathlib import Path
 
 from survey.evalharness.holdout import HoldoutMissingError, load_holdout_ids
 from survey.extraction.schema import SchemaError, load_schema
+
+
+def _check_title_collisions(problems: list[str], notes: list[str]) -> None:
+    """No two papers may share a title — and especially not across the split.
+
+    Added after P-008: `a-robust-deep-learning-...` and `r-deepsc-paper-...` were
+    the same paper under unrelated filenames, one in dev and one in holdout, so
+    holdout content sat in the dev set from Phase 0 onward. Neither hash nor slug
+    dedupe could see it; only the parsed titles matched, and nothing compared
+    those until a stress test did.
+
+    Needs the database, so it is skipped when Postgres is absent rather than
+    failing — the CI integration job provides one.
+    """
+    try:
+        import psycopg
+
+        from survey.ingest import store
+    except ImportError:  # pragma: no cover
+        return
+
+    try:
+        conn = psycopg.connect(store.dsn(), connect_timeout=3, autocommit=True)
+    except Exception:
+        notes.append("title collisions: skipped (no database)")
+        return
+
+    with conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT p.external_id, p.title, COALESCE(s.split, 'unassigned') "
+            "FROM papers p LEFT JOIN corpus_split s ON s.paper_id = p.id "
+            "WHERE p.title IS NOT NULL"
+        )
+        rows = cur.fetchall()
+
+    seen: dict[str, tuple[str, str]] = {}
+    collisions: list[str] = []
+    for ext_id, title, split in rows:
+        key = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+        if key in seen and seen[key][0] != ext_id:
+            other_id, other_split = seen[key]
+            straddles = " -- ACROSS THE SPLIT" if other_split != split else ""
+            collisions.append(
+                f"{other_id} ({other_split}) == {ext_id} ({split}){straddles}"
+            )
+        seen[key] = (ext_id, split)
+
+    if collisions:
+        problems.extend(f"duplicate paper: {c}" for c in collisions)
+    else:
+        notes.append(f"title collisions: none across {len(rows)} papers")
 
 MANIFEST = Path("corpus/manifest.csv")
 GOLD_TABLE = Path("eval/gold_table_semcom.csv")
@@ -130,6 +182,7 @@ def main() -> int:
     holdout = _check_holdout(problems, notes)
     _check_manifest(problems, notes, holdout)
     _check_schema(problems, notes)
+    _check_title_collisions(problems, notes)
     problems.extend(_check_gold_table(notes, holdout))
 
     for note in notes:

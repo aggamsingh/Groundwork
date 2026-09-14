@@ -791,3 +791,37 @@ Evidence: 1,210 chunks over 28 dev papers; retrieval returns sensible results
 word accuracy in BLEU score (1-gram) when SNR is higher than 6 dB"); 0 holdout
 chunks reachable through `v_dev_chunks`.
 Reversible? Yes. Both the mode and the term logic are config parameters.
+
+## D-023 — Table cell merging: measured, baselined, not fixed
+Date: 2026-09-15
+Phase: 2
+Decision: 7 of 46 stored tables contain cells where three or more numbers have
+been merged together, losing their row association. This is recorded as a
+measured baseline rather than fixed, and the stress suite fails only if it gets
+*worse*.
+Evidence: Attention Table 4 holds one cell reading `88.3 90.4 90.4 91.7` and
+another holding four separate row labels — four results whose row association is
+gone. This is the P-004 failure in miniature, and it matters specifically for
+numeric extraction: a number that cannot be attributed to a row cannot be
+attributed to a system.
+Alternatives considered: (i) fix the extractor; (ii) fail the check until fixed;
+(iii) drop the affected tables.
+Reasoning: (i) is the same wall D-017 hit twice. Cell merging is a property of
+the line-based detector's cell matching, and closing it needs the layout model
+D-017 already concluded is required — a dependency decision that is the user's
+and currently blocked by Smart App Control anyway (P-006).
+(ii) was the first instinct and is wrong. A check that can never pass trains
+everyone to ignore the suite it lives in, and the suite is now the most valuable
+thing in the repository — it found P-008. A baseline that fails on regression
+keeps the signal without the noise.
+(iii) would discard real data: the affected tables are genuine, and their
+non-merged cells are still correct.
+Note on how this was found: the original check flagged "3+ cells over 90
+characters" as prose-like and hit 12 of 47 tables. Inspecting them showed they
+were genuine survey tables with descriptive columns, so that check was measuring
+cell length rather than correctness. The real defect was only visible once the
+hits were read rather than counted — the same lesson as P-003 and D-017, now for
+the third time: a count is not a result.
+Carried into Phase 3: if numeric questions depend on the affected tables, this
+becomes blocking and the layout model is the answer.
+Reversible? Yes; the baseline is one constant.
