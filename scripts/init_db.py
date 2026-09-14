@@ -38,6 +38,23 @@ EXPECTED_TABLES = {
 DEFAULT_DSN = "postgresql://survey:survey_local_dev@localhost:5433/survey"
 
 
+def apply_chunk_schema(conn: psycopg.Connection) -> None:
+    """Apply chunks.sql — the derived chunk/embedding/FTS layer.
+
+    Written entirely with IF NOT EXISTS / OR REPLACE, so unlike schema.sql it can
+    simply be re-run. It describes derived data that is rebuilt whenever chunking
+    configuration changes, which Phase 3 does repeatedly.
+    """
+    path = SCHEMA.parent / "chunks.sql"
+    if not path.exists():
+        print("  chunks.sql not found - skipping")
+        return
+    with conn.cursor() as cur:
+        cur.execute(path.read_text(encoding="utf-8"))
+    conn.commit()
+    print("  chunk schema applied")
+
+
 def apply_schema(conn: psycopg.Connection) -> None:
     """Apply schema.sql. Objects already present are left alone."""
     sql = SCHEMA.read_text(encoding="utf-8")
@@ -143,6 +160,7 @@ def main() -> int:
         with psycopg.connect(args.dsn, connect_timeout=10) as conn:
             apply_schema(conn)
             migrate(conn)
+            apply_chunk_schema(conn)
             problems = verify(conn)
     except psycopg.OperationalError as exc:
         print(f"\ncould not connect: {exc}", file=sys.stderr)

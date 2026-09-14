@@ -759,3 +759,35 @@ Verified after the move: 98 tests pass, ruff clean, artifact guards intact,
 Postgres back up with all 42 papers and 28 dev papers visible through
 `v_dev_papers`, and every Phase 1 exit criterion still met.
 Reversible? Yes, though it would mean rebuilding the venv again.
+
+## D-022 — Lexical retrieval is Postgres FTS, and is not called BM25
+Date: 2026-09-15
+Phase: 2 (machinery)
+Decision: Lexical retrieval uses Postgres full-text search with `ts_rank_cd`,
+per spec section 4's first option. It is named `fts` everywhere in code, config
+and reports — never `bm25`.
+Reasoning: `ts_rank_cd` is not BM25. It has no document-length saturation term
+and no tunable k1/b, so it is a different scoring function that happens to serve
+the same role. Spec section 4 offers "BM25 via Postgres full-text search, or a
+local rank_bm25 index if FTS proves inadequate", and calling the FTS
+implementation "BM25" would make the Phase 3 ablation table assert something
+untrue about what was run. If the Phase 2 measurement shows FTS is inadequate,
+`rank_bm25` becomes a second mode alongside it rather than a silent replacement,
+and the ablation can then compare them honestly.
+Second decision, deliberately left open: `websearch_to_tsquery` ANDs every term.
+On this corpus "channel-aware training AWGN" returns **zero** results, because no
+single chunk contains all three — a plausible research query retrieving nothing.
+ORing the terms trades precision for recall. Both are implemented as
+`term_logic="all"|"any"`, neither is preferred, and the default is the
+conservative one rather than a chosen one (C-006). This is exactly what the
+hand-labelled eval set exists to settle, and guessing now would put an unmeasured
+assumption under every Phase 3 delta.
+RRF (Phase 3 item 4) is implemented here too, because it needs no score
+calibration between retrievers — `ts_rank_cd` and cosine similarity are on
+unrelated scales, and a weighted sum of them would be arithmetic on
+incomparable quantities. k=60 is the original paper's value, untuned.
+Evidence: 1,210 chunks over 28 dev papers; retrieval returns sensible results
+(a query for BLEU and semantic similarity surfaces "DeepSC achieves more than 90%
+word accuracy in BLEU score (1-gram) when SNR is higher than 6 dB"); 0 holdout
+chunks reachable through `v_dev_chunks`.
+Reversible? Yes. Both the mode and the term logic are config parameters.
