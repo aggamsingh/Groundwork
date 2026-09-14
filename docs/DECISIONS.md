@@ -695,3 +695,35 @@ Evidence: dry run against the original 50-file folder now reports 0 to add, 50
 skipped, 0 blocked — every file correctly recognised.
 Reversible? Yes; the file is a record and can be edited. Each row names the
 decision that put it there.
+
+## D-020 — Hardware budget: 4 GB VRAM constrains every local model choice
+Date: 2026-09-14
+Phase: 0/1 (answers Q-B4)
+Decision: All local models are chosen to fit an NVIDIA RTX 3050 Laptop with
+4 GB VRAM (15.7 GB system RAM). That means base-size encoders at most: no 7B+
+models, no full fine-tuning, and batch sizes small enough that a long paper does
+not overflow.
+Measured: `nvidia-smi` reports 4094 MiB on the RTX 3050; an Intel UHD iGPU is
+also present and is not useful for this.
+What still fits, and what it rules out:
+  - Embeddings (Phase 3): base-size sentence-transformers (~110M params) run
+    comfortably in fp16. The Phase 3 comparison of two alternatives should stay
+    within that class rather than benchmarking something that cannot be served.
+  - Cross-encoder reranker (Phase 3/5): MiniLM- or base-size cross-encoders fit
+    for inference. Fine.
+  - NLI verifier (Phase 4): a base-size entailment model in fp16 is roughly
+    1.5 GB and fits. A large NLI model does not, and Phase 4 is the phase the
+    spec says to cut last — so the verifier must be chosen to fit rather than
+    chosen and then squeezed.
+  - LoRA adapter (Phase 5): trainable on a base cross-encoder with fp16,
+    gradient accumulation, short max sequence length, and a small batch. Tight
+    but real. Full fine-tuning is not possible and was never planned.
+Consequence worth stating now: the generator stays an API model (spec §4 already
+requires this), so no local budget is needed for it. Every GPU-resident component
+is therefore an encoder, and 4 GB is enough for all of them at base size.
+Risk: two models resident at once — reranker plus NLI verifier during a Phase 4
+eval run — could exceed 4 GB together. Mitigation is to load them sequentially
+rather than concurrently; noted here so it is a design constraint from the start
+rather than an out-of-memory error during an eval.
+Evidence: nvidia-smi, 2026-09-14.
+Reversible? The constraint is hardware. The choices made under it are not.

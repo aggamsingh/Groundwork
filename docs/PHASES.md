@@ -50,7 +50,7 @@ entry gate.
 |---|---|---|
 | ~~Q-B2~~ | ~~Gold table — does it exist?~~ **Resolved 2026-09-13: no survey written yet; a 10-paper review matrix exists. Deferred (C-003).** | — |
 | Q-B3 | Which generator API is available? | Phase 2 |
-| Q-B4 | GPU available, and how much VRAM? | Phase 4 / 5 architecture |
+| ~~Q-B4~~ | ~~GPU and VRAM?~~ **Answered 2026-09-14: RTX 3050 Laptop, 4 GB VRAM, 15.7 GB RAM. Base-size models only (D-020).** | — |
 | ~~Q-B5~~ | ~~Holdout split — random or stratified?~~ **Resolved: the user chooses the papers. Claude does not generate the split.** | — |
 | Q-B6 | Schema — does the user want a Claude draft to edit, or write from scratch? (Either way the frozen file is theirs.) | 0.7 |
 | Q-B7 | Rename spec to `PROJECT_SPEC.md`, or keep current name? | cosmetic |
