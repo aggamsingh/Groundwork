@@ -143,3 +143,35 @@ paper, so 100 papers is ~10 minutes against the 20-minute budget. Definition of
 Done #7 is reachable without the queue. The queue remains unbuilt and is still
 the right answer if ingestion ever needs to survive a crash mid-run or report
 progress to a UI.
+
+## C-006 — Phase 2 machinery built before its entry gates, under a no-tuning rule
+Date: 2026-09-14
+Original plan: Phase 2 begins once its entry gates clear — corpus at ~120 papers
+(C-001), the gold table (C-003), and 60 hand-labelled questions (CHECKPOINT 4).
+Change: the *machinery* of Phase 2 is built now — chunking, embeddings, pgvector
+indexing, retrieval, eval metric implementations, MLflow run logging — while the
+gates remain closed. No baseline number is produced and no configuration is
+tuned.
+Trigger: the user is unable to supply the corpus and eval questions for now and
+asked what work does not depend on them (2026-09-14).
+The rule this is built under, which is what keeps it honest:
+  - Every configurable value (chunk size, top-k, embedding model, fusion weights,
+    thresholds) stays a config parameter with a default marked explicitly as
+    unjustified-pending-eval.
+  - Nothing is described as "better", "improved" or "chosen" until it has been
+    measured against the user's questions.
+  - No component is deleted or simplified on the basis of how it looks without
+    evidence.
+Impact:
+  - The day the questions land, the baseline runs in one command rather than
+    after a week of building.
+  - Risk, and it is the one the spec names in §6 ("building clever retrieval
+    before the baseline"): code written before measurement tends to acquire
+    unmeasured assumptions. Mitigated by the no-tuning rule above, and by the
+    fact that the *interfaces* here are standard — chunk, store, embed, retrieve
+    — while the *decisions* are all deferred.
+  - A second, quieter risk: building against 42 papers when the corpus will be
+    ~120 could bake in assumptions about scale. Noted; the code paths are
+    corpus-size agnostic and this will be re-verified after growth.
+  - Phase 2's exit criteria are unchanged and still gated. This changes when
+    machinery is written, not when the baseline is measured.
