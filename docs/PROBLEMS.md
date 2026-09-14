@@ -239,3 +239,39 @@ unrelated failures scattered across whatever was being installed at the time.
 The wider pattern, now three times over (P-001 Docker, P-004 GROBID, this):
 an environment failure impersonating a code failure. Check whether the tool
 itself can run before debugging what it was asked to do.
+
+## P-007 — C: drive reached 0 bytes free; Docker Desktop died
+Date: 2026-09-14
+Phase: 2 (machinery)
+Symptom: a container running `pip install torch` failed with
+`OSError(30, 'Read-only file system')` and `error waiting for container:
+unexpected EOF`. Then `docker system df` returned HTTP 500, and every docker
+command returned "Docker Desktop is unable to start".
+First hypothesis (WRONG): the container had exhausted its own writable layer, so
+the fix was a larger layer or a slimmer install. Plausible from the error alone,
+and wrong.
+Actual cause: the host disk was completely full — `Get-PSDrive C` reported
+**0 GB free** of 191.5 GB. Docker Desktop's VM cannot write to a full disk, so
+the daemon failed and took every container with it, including Postgres and the
+whole corpus store.
+My own contribution, which is the part worth owning: installing docling pulled
+torch and transformers (1.41 GB into the venv) and left 3.78 GB in the pip cache
+— about 5.2 GB, on a disk that evidently had little headroom to start with. The
+install was for a table extractor that Smart App Control then blocked from
+loading anyway (P-006), so the space bought nothing.
+Fix: purged the pip cache (1,565 files) and uninstalled the torch stack, which is
+unusable natively regardless. Free space went 0 -> 9.01 GB. Docker needed a full
+restart (kill processes, `wsl --shutdown`, relaunch) before it would start again.
+Verified afterwards: 92 tests pass, Postgres back up, pgvector 0.8.6, all 42
+papers present, every Phase 1 exit criterion still met. Nothing was lost, which
+was luck as much as design — the pgdata volume survived a hard daemon kill.
+Cost: ~30 minutes.
+Prevention: `scripts/check_env.py` should check free disk space and fail loudly
+below a threshold; a full disk presents as unrelated errors in whatever happens
+to be writing at the time, which is exactly how this appeared. More directly:
+check available space BEFORE installing anything large, and purge the package
+cache afterwards rather than leaving a multi-gigabyte cache behind on a machine
+that was already nearly full.
+Standing note for the project: the disk is the binding constraint on this
+machine, not just VRAM. A local model stack (torch plus model weights) is several
+gigabytes before any corpus growth, and the corpus is about to roughly triple.
