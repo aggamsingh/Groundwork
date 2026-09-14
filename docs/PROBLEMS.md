@@ -201,3 +201,41 @@ Prevention: `scripts/check_artifacts.py` runs in CI over the frozen artifacts,
 and this class of error — a file the project depends on that no check reads —
 is exactly what it is for. A broader lesson for the commit log: a commit message
 naming a file is not evidence the file was committed. `git ls-files` is.
+
+## P-006 — Windows Smart App Control blocked uv.exe mid-project
+Date: 2026-09-14
+Phase: 2 (machinery)
+Symptom: `uv add docling` failed with "Program 'uv.exe' failed to run: An
+Application Control policy has blocked this file". Every `uv` invocation now
+fails the same way — `uv --version` included — though uv had been used
+successfully all through Phases 0 and 1, including minutes earlier.
+First hypothesis (WRONG): a transient failure in the background task runner,
+since the first failure happened in a backgrounded command and an earlier
+`pytest.exe` invocation had failed oddly in the same context. Retrying in the
+foreground failed identically, which ruled it out.
+Actual cause: Windows Smart App Control is enabled and enforcing
+(`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState`
+= 1). SAC blocks binaries it does not consider reputable, and its verdicts change
+over time as its reputation data updates — which is why uv worked for two phases
+and then stopped. The earlier `pytest.exe` block was the same mechanism showing
+an early symptom that I worked around (`python -m pytest`) without diagnosing.
+Fix: `python -m ensurepip --upgrade` bootstrapped pip into the existing venv, and
+packages install with `.venv\Scripts\python.exe -m pip` instead. The venv's
+`python.exe` is not blocked, so tests, scripts and ingestion all still run —
+`python -m pytest` in place of `uv run pytest`.
+Consequence to watch: dependencies added via pip do NOT update `uv.lock`, so the
+lockfile is now stale relative to the environment. `pyproject.toml` is kept
+current by hand. This matters for spec Definition of Done #7 and for Phase 6
+reproducibility, both of which assume a lockfile that describes the environment.
+It needs resolving before either is claimed.
+What was NOT done, deliberately: Smart App Control cannot be configured with
+exclusions, and turning it off is irreversible without reinstalling Windows.
+Recommending the user disable a security feature to unblock a package manager
+would be a poor trade, and the pip workaround costs nothing by comparison.
+Cost: ~25 minutes.
+Prevention: `scripts/check_env.py` should gain a check that the package manager
+actually runs, since "the tool that installs things has been blocked" presents as
+unrelated failures scattered across whatever was being installed at the time.
+The wider pattern, now three times over (P-001 Docker, P-004 GROBID, this):
+an environment failure impersonating a code failure. Check whether the tool
+itself can run before debugging what it was asked to do.
